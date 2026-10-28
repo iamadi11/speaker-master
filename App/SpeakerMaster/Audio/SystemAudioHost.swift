@@ -24,16 +24,47 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
     private var outputUID: String = ""
     private var engine: ProcessTapEngine?
     private var startGeneration = 0
+    /// When true, `update` must not auto-reactivate (Measure suspend window).
+    private var suspendedForMeasure = false
+    private var pendingRestartTask: Task<Void, Never>?
+    private var autoRetryUsed = false
 
     func setOutputUID(_ uid: String) {
         guard uid != outputUID else { return }
         outputUID = uid
-        if status == .activeSystemWide || status == .starting || status == .readyPendingPermission {
-            activate(curve: currentCurve)
+        let shouldRestart: Bool = {
+            switch status {
+            case .activeSystemWide, .starting, .readyPendingPermission, .failed, .activeInAppOnly:
+                return true
+            case .inactive:
+                return false
+            }
+        }()
+        if shouldRestart, !suspendedForMeasure {
+            scheduleRestart(reason: "output changed")
         }
     }
 
+    /// Pause the process-tap host for Measure capture so mic + audition aren't starved.
+    func suspendForMeasure() {
+        suspendedForMeasure = true
+        pendingRestartTask?.cancel()
+        pendingRestartTask = nil
+        deactivateKeepingSuspendFlag()
+    }
+
+    /// Resume after Measure apply / refuse / failure.
+    func resumeAfterMeasure(curve: EQCurve) {
+        suspendedForMeasure = false
+        autoRetryUsed = false
+        activate(curve: curve)
+    }
+
     func activate(curve: EQCurve) {
+        guard !suspendedForMeasure else {
+            currentCurve = curve.sanitized()
+            return
+        }
         currentCurve = curve.sanitized()
         startGeneration += 1
         let generation = startGeneration
@@ -58,6 +89,7 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
                         next.stop()
                         return
                     }
+                    self.autoRetryUsed = false
                     self.status = .activeSystemWide
                     self.phase = .activeSystemWide
                     self.detail =
@@ -66,7 +98,7 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
             } catch let error as ProcessTapCapture.CaptureError {
                 await MainActor.run {
                     guard generation == self.startGeneration else { return }
-                    self.handleStartFailure(error)
+                    self.handleStartFailure(error, generation: generation)
                 }
             } catch {
                 await MainActor.run {
@@ -83,7 +115,7 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
     func update(curve: EQCurve) {
         currentCurve = curve.sanitized()
         engine?.apply(curve: currentCurve)
-        if status == .inactive {
+        if status == .inactive, !suspendedForMeasure {
             activate(curve: currentCurve)
         }
     }
@@ -96,18 +128,12 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
     }
 
     func deactivate() {
-        startGeneration += 1
-        let stopping = engine
-        engine = nil
-        Task.detached {
-            stopping?.stop()
-        }
-        status = .inactive
-        phase = .inactive
-        detail = "Processing off."
+        suspendedForMeasure = false
+        deactivateKeepingSuspendFlag()
     }
 
     func retrySystemWide() {
+        autoRetryUsed = false
         activate(curve: currentCurve)
     }
 
@@ -117,7 +143,33 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
         }
     }
 
-    private func handleStartFailure(_ error: ProcessTapCapture.CaptureError) {
+    // MARK: - Private
+
+    private func deactivateKeepingSuspendFlag() {
+        startGeneration += 1
+        pendingRestartTask?.cancel()
+        pendingRestartTask = nil
+        let stopping = engine
+        engine = nil
+        Task.detached {
+            stopping?.stop()
+        }
+        status = .inactive
+        phase = .inactive
+        detail = suspendedForMeasure ? "System-wide paused for Measure…" : "Processing off."
+    }
+
+    /// Coalesce rapid output-UID flips (Bluetooth reconnect storms).
+    private func scheduleRestart(reason _: String) {
+        pendingRestartTask?.cancel()
+        pendingRestartTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000)
+            guard !Task.isCancelled, !self.suspendedForMeasure else { return }
+            self.activate(curve: self.currentCurve)
+        }
+    }
+
+    private func handleStartFailure(_ error: ProcessTapCapture.CaptureError, generation: Int) {
         switch error {
         case .permissionDenied:
             status = .readyPendingPermission
@@ -132,6 +184,17 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
                 status = .readyPendingPermission
                 phase = .needsPermission
                 detail = SystemAudioPermissionCopy.grantSteps
+            } else if !autoRetryUsed {
+                // One quiet retry for transient Core Audio races after Measure / device flip.
+                autoRetryUsed = true
+                status = .starting
+                phase = .starting
+                detail = "Retrying system-wide EQ…"
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    guard generation == self.startGeneration, !self.suspendedForMeasure else { return }
+                    self.activate(curve: self.currentCurve)
+                }
             } else {
                 status = .failed("\(op) (\(statusCode))")
                 phase = .failed

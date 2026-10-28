@@ -53,6 +53,7 @@ struct NarrowFlowView: View {
                                 .foregroundStyle(SMTheme.muted)
                                 .textCase(.uppercase)
                                 .tracking(0.6)
+                                .accessibilityAddTraits(.isHeader)
                             LazyVGrid(
                                 columns: [GridItem(.adaptive(minimum: 200), spacing: SMTheme.spaceSM)],
                                 spacing: SMTheme.spaceSM
@@ -62,6 +63,8 @@ struct NarrowFlowView: View {
                                 }
                             }
                         }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel(category.title)
                     }
                 }
             }

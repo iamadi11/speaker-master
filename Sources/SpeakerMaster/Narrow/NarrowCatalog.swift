@@ -93,6 +93,26 @@ public enum NarrowCatalog: Sendable {
             )
         ),
         NarrowPreset(
+            id: "party-portable",
+            title: "Party portable",
+            summary: "JBL / UE-class boom boxes — cut one-note thump; light clarity. Not a party booster.",
+            category: .portable,
+            curve: curve(
+                gains: [-3.0, -2.0, 0, 1.5, -1.0],
+                broadband: 0
+            )
+        ),
+        NarrowPreset(
+            id: "homepod-class",
+            title: "HomePod / Nest",
+            summary: "Soften room boom and harsh presence for smart speakers. Quick improve — not Measure.",
+            category: .smartSpeaker,
+            curve: curve(
+                gains: [-2.0, -1.5, 0.5, -1.5, -2.0],
+                broadband: 0
+            )
+        ),
+        NarrowPreset(
             id: "generic-safe",
             title: "Just make it safer",
             summary: "Almost flat with a gentle harshness cut. Never embarrassing.",
@@ -126,8 +146,16 @@ public enum NarrowCatalog: Sendable {
         {
             return "sony-ult-portable"
         }
+        if name.contains("homepod") || name.contains("nest mini") || name.contains("nest audio")
+            || name.contains("google home") || name.contains("google nest")
+        {
+            return "homepod-class"
+        }
         if name.contains("echo") || name.contains("alexa") || name.contains("amazon") {
             return "echo-class"
+        }
+        if looksLikePartyPortable(deviceName: deviceName) {
+            return "party-portable"
         }
         if looksLikeDeskSpeaker(deviceName: deviceName) {
             return "desktop-nearfield"
@@ -136,6 +164,15 @@ public enum NarrowCatalog: Sendable {
             return "bt-portable"
         }
         return "bt-portable"
+    }
+
+    public static func looksLikePartyPortable(deviceName: String) -> Bool {
+        let name = deviceName.lowercased()
+        let markers = [
+            "jbl ", "jbl-", "flip ", "charge ", "xtreme", "boombox",
+            "ue boom", "wonderboom", "megaboom", "anker sound", "soundcore",
+        ]
+        return markers.contains { name.contains($0) }
     }
 
     public static func looksLikeHeadphones(deviceName: String) -> Bool {
