@@ -185,7 +185,10 @@ struct SpeakerMasterApp: App {
             if wantMeasure {
                 _ = await model.mic.requestPermission()
                 model.mic.refreshDevices()
+                // Continuity/iPhone mics often return empty buffers in automated smokes.
+                model.mic.preferBuiltInMicrophoneIfAvailable()
                 print("smoke_mic_count=\(model.mic.devices.count)")
+                print("smoke_mic_selected=\(model.mic.selectedDeviceID ?? "nil")")
                 if model.mic.devices.isEmpty || model.mic.selectedDeviceID == nil {
                     print("smoke_fail=empty_mic_list")
                     failed = true
@@ -196,8 +199,8 @@ struct SpeakerMasterApp: App {
                     if let note = model.measureNote {
                         print("smoke_measure_note=\(note)")
                     }
-                    // Hard fail on empty mic / TCC / engine failure. Bad acoustic takes still
-                    // exit 0 (room-dependent) but permission and binding must work.
+                    // Hard fail on empty mic / TCC / engine / empty-buffer failures.
+                    // Bad acoustic takes still exit 0 (room-dependent).
                     if model.statusMessage == "No mic selected"
                         || model.statusMessage.hasPrefix("Measure failed")
                         || model.statusMessage.hasPrefix("Mic permission needed")

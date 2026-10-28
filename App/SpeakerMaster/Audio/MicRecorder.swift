@@ -8,49 +8,12 @@ struct MicDevice: Identifiable, Hashable {
     var name: String
 }
 
-/// File-scoped so the AVAudioEngine tap never closes over a MainActor type.
-private final class MicSampleBuffer: @unchecked Sendable {
-    private let lock = NSLock()
-    private var values: [Float] = []
-
-    init(capacity: Int) {
-        values.reserveCapacity(capacity)
-    }
-
-    func append(_ chunk: UnsafePointer<Float>, count: Int) {
-        guard count > 0 else { return }
-        lock.lock()
-        values.append(contentsOf: UnsafeBufferPointer(start: chunk, count: count))
-        lock.unlock()
-    }
-
-    func snapshot() -> [Float] {
-        lock.lock()
-        defer { lock.unlock() }
-        return values
-    }
-}
-
-/// Install tap off the MainActor — Swift 6 isolates closures created inside
-/// `@MainActor` methods, which traps on `RealtimeMessenger.mServiceQueue`.
-private enum MicTapFactory {
-    nonisolated static func install(
-        on input: AVAudioInputNode,
-        format: AVAudioFormat,
-        buffer: MicSampleBuffer
-    ) {
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buf, _ in
-            guard let channel = buf.floatChannelData?[0] else { return }
-            buffer.append(channel, count: Int(buf.frameLength))
-        }
-    }
-}
-
 enum MicRecorderError: LocalizedError {
     case noDeviceSelected
     case deviceNotInput(String)
     case cannotBindInput(String)
     case engineStartFailed(String)
+    case emptyCapture(String)
 
     var errorDescription: String? {
         switch self {
@@ -61,7 +24,9 @@ enum MicRecorderError: LocalizedError {
         case .cannotBindInput(let detail):
             return "Could not use that mic (\(detail))"
         case .engineStartFailed(let detail):
-            return "Mic engine failed to start (\(detail))"
+            return "Mic capture failed to start (\(detail))"
+        case .emptyCapture(let name):
+            return "“\(name)” returned no audio — try Built-in Microphone, or refresh and re-select"
         }
     }
 }
@@ -83,11 +48,6 @@ final class MicRecorder: ObservableObject {
     /// Rough peak of the latest capture (0…1) for UI honesty after a run.
     @Published private(set) var lastPeakLinear: Float = 0
 
-    private var engine: AVAudioEngine?
-    private var samples: [Float] = []
-    private var sampleRate: Double = 48_000
-    private var tapInstalled = false
-
     init() {
         permission = Self.currentPermission()
         refreshDevices()
@@ -104,7 +64,38 @@ final class MicRecorder: ObservableObject {
         } else if let current = selectedDeviceID, list.contains(where: { $0.id == current }) {
             // keep current selection
         } else {
-            selectedDeviceID = list.first?.id
+            selectedDeviceID = Self.preferredInputID(from: list)
+        }
+    }
+
+    /// Prefer a local Mac mic over Continuity/iPhone for first-run Measure reliability.
+    static func preferredInputID(from list: [MicDevice]) -> String? {
+        if let builtIn = list.first(where: { $0.id == "BuiltInMicrophoneDevice" }) {
+            return builtIn.id
+        }
+        if let macBook = list.first(where: {
+            let name = $0.name.lowercased()
+            return name.contains("macbook") && name.contains("microphone")
+        }) {
+            return macBook.id
+        }
+        if let local = list.first(where: { !looksLikeContinuityMic($0) }) {
+            return local.id
+        }
+        return list.first?.id
+    }
+
+    static func looksLikeContinuityMic(_ device: MicDevice) -> Bool {
+        let name = device.name.lowercased()
+        return name.contains("iphone") || name.contains("ipad") || name.contains("continuity")
+    }
+
+    /// Smoke / recovery helper — select Built-in when present.
+    func preferBuiltInMicrophoneIfAvailable() {
+        if let builtIn = devices.first(where: { $0.id == "BuiltInMicrophoneDevice" }) {
+            selectedDeviceID = builtIn.id
+        } else if let preferred = Self.preferredInputID(from: devices) {
+            selectedDeviceID = preferred
         }
     }
 
@@ -156,7 +147,10 @@ final class MicRecorder: ObservableObject {
     }
 
     /// Play stimulus via `player` while capturing the **user-selected** mic for `duration`.
-    /// Samples stay in memory only; cleared after return (no durable capture files).
+    ///
+    /// Uses `AVAudioRecorder` (not a second `AVAudioEngine` input). Two AVAudioEngines
+    /// on this Mac starve the input tap to empty buffers — verified in gap-fix.
+    /// Temp WAV is deleted after load (no durable capture files).
     func recordWhilePlaying(
         duration: TimeInterval,
         player: InAppEQPlayer,
@@ -176,80 +170,135 @@ final class MicRecorder: ObservableObject {
             throw MicRecorderError.deviceNotInput(displayName)
         }
 
-        samples = []
+        player.stop()
         lastPeakLinear = 0
-        let engine = AVAudioEngine()
-        self.engine = engine
 
+        let previousDefault = Self.defaultInputDeviceID()
         do {
-            try Self.bindInputDevice(deviceID, on: engine)
+            try Self.setDefaultInputDeviceID(deviceID)
         } catch {
-            cleanupEngine()
             throw MicRecorderError.cannotBindInput(error.localizedDescription)
         }
+        defer {
+            if let previousDefault {
+                try? Self.setDefaultInputDeviceID(previousDefault)
+            }
+        }
 
-        engine.prepare()
-        let input = engine.inputNode
-        let format = input.inputFormat(forBus: 0)
-        sampleRate = format.sampleRate > 0 ? format.sampleRate : 48_000
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("speaker-master-measure-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
 
-        // Shared buffer: audio thread appends; MainActor reads only after tap removed + engine stopped.
-        let buffer = MicSampleBuffer(capacity: Int(sampleRate * duration) + 4096)
-        MicTapFactory.install(on: input, format: format, buffer: buffer)
-        tapInstalled = true
+        let sampleRateHint = CoreAudioDeviceLookup.sampleRate(for: deviceID)
+        let rate = sampleRateHint > 0 ? sampleRateHint : 48_000
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatLinearPCM),
+            AVSampleRateKey: rate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsNonInterleaved: false,
+        ]
 
+        let recorder: AVAudioRecorder
         do {
-            try engine.start()
+            recorder = try AVAudioRecorder(url: url, settings: settings)
         } catch {
-            cleanupEngine()
             throw MicRecorderError.engineStartFailed(error.localizedDescription)
         }
+        guard recorder.prepareToRecord() else {
+            throw MicRecorderError.engineStartFailed("prepareToRecord returned false")
+        }
+
         isRecording = true
+        defer { isRecording = false }
+
+        guard recorder.record() else {
+            throw MicRecorderError.engineStartFailed("record() returned false")
+        }
 
         do {
             try player.start(mode: .sweep, curve: stimulusCurve)
         } catch {
-            cleanupEngine()
+            recorder.stop()
             throw error
         }
 
         try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
 
         player.stop()
-        cleanupEngine()
+        recorder.stop()
 
-        let captured = buffer.snapshot()
-        samples = []
+        let captured: [Float]
+        let fileRate: Double
+        do {
+            (captured, fileRate) = try Self.loadMonoFloats(from: url)
+        } catch {
+            throw MicRecorderError.engineStartFailed(error.localizedDescription)
+        }
+
         lastPeakLinear = captured.map { abs($0) }.max() ?? 0
-        return (captured, sampleRate)
+        if captured.isEmpty {
+            throw MicRecorderError.emptyCapture(displayName)
+        }
+        return (captured, fileRate)
     }
 
-    private func cleanupEngine() {
-        if let engine {
-            if tapInstalled {
-                engine.inputNode.removeTap(onBus: 0)
-                tapInstalled = false
-            }
-            engine.stop()
-        }
-        engine = nil
-        isRecording = false
-    }
+    // MARK: - Default input (AVAudioRecorder listens here)
 
-    /// Bind HAL input device to `AVAudioEngine`’s input node (macOS).
-    private static func bindInputDevice(_ deviceID: AudioDeviceID, on engine: AVAudioEngine) throws {
-        guard let audioUnit = engine.inputNode.audioUnit else {
-            throw MicRecorderError.cannotBindInput("missing input AudioUnit")
-        }
-        var id = deviceID
-        let status = AudioUnitSetProperty(
-            audioUnit,
-            kAudioOutputUnitProperty_CurrentDevice,
-            kAudioUnitScope_Global,
-            0,
-            &id,
-            UInt32(MemoryLayout<AudioDeviceID>.size)
+    private static func defaultInputDeviceID() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
         )
-        try CoreAudioDeviceLookup.check(status, operation: "set CurrentDevice on input")
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &size,
+            &deviceID
+        )
+        return status == noErr && deviceID != 0 ? deviceID : nil
+    }
+
+    private static func setDefaultInputDeviceID(_ deviceID: AudioDeviceID) throws {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var id = deviceID
+        let status = AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            UInt32(MemoryLayout<AudioDeviceID>.size),
+            &id
+        )
+        try CoreAudioDeviceLookup.check(status, operation: "set default input device")
+    }
+
+    private static func loadMonoFloats(from url: URL) throws -> ([Float], Double) {
+        let file = try AVAudioFile(forReading: url)
+        let format = file.processingFormat
+        let frameCount = AVAudioFrameCount(file.length)
+        guard frameCount > 0,
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)
+        else {
+            return ([], format.sampleRate)
+        }
+        try file.read(into: buffer)
+        let frames = Int(buffer.frameLength)
+        guard frames > 0 else { return ([], format.sampleRate) }
+
+        if let channel = buffer.floatChannelData?[0] {
+            return (Array(UnsafeBufferPointer(start: channel, count: frames)), format.sampleRate)
+        }
+        return ([], format.sampleRate)
     }
 }
