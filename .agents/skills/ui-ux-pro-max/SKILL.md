@@ -7,6 +7,15 @@ description: "UI/UX design intelligence for web, mobile, and desktop. This skill
 
 Searchable local UI/UX guidance: 79 searchable styles (50 active), 192 product palettes and exact reasoning profiles, 74 font pairings, 119 UX guidelines, 105 curated icons, 17 GSAP presets, 25 chart types, and 22 technology stacks.
 
+## Speaker Master override (read first)
+
+This repo vendors **macOS-native** design skills. For Speaker Master UI:
+
+1. Load **`macos-design`**, **`macos-patterns`**, **`apple-design`** first (modern minimal, sparse chrome, HIG materials).
+2. Load **`ux-journey-pm`** for first-launch → permissions → Auto → Custom → System EQ.
+3. Use **this skill** for accessibility, interaction timing, and checklist support — **not** to impose teal-dense “pro console” or web-dashboard layouts.
+4. If this skill’s palette/density guidance conflicts with macOS skills or `AGENTS.md` visual bar, **defer to macOS skills**.
+
 ## When to Apply
 
 Use this Skill when the task involves **UI structure, visual design decisions, interaction patterns, or user experience quality control**: designing new pages, creating/refactoring UI components, choosing color/typography/spacing/layout systems, reviewing UI for UX/accessibility/consistency, implementing navigation/animation/responsive behavior, or improving perceived quality and usability.

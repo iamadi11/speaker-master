@@ -29,10 +29,27 @@ Speaker Master vendors agent skills under `.agents/skills/`. Existing packs (**u
 | License / provenance | Skill packaging provided as-is by upstream. **Guideline text in `references/hig/` belongs to Apple Inc.**, reproduced from the public [Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/) for AI-assisted review. Not affiliated with or endorsed by Apple. See `LICENSE-NOTE.md` in the skill folder. |
 | Use | HIG-grounded design review (`/apple-design`) |
 
+## Project-authored skills
+
+### ux-journey-pm
+
+| | |
+|---|---|
+| Path | `.agents/skills/ux-journey-pm` |
+| License | MIT (project) |
+| Role | User journey PM: first launch → permissions → Auto Measure\|Narrow → Custom → System EQ. Loads after macOS design skills, before ui-ux-pro-max. |
+
 ## Preserved project skills
 
-- `.agents/skills/ui-ux-pro-max`
+- `.agents/skills/ui-ux-pro-max` — defers visual direction to macOS skills for this repo
 - Matt Pocock set (grill-me, tdd, code-review, implement, …) + `matt-pocock-swift-adapter`
-- `.agents/skills/autonomous-gap-fix`
+- `.agents/skills/autonomous-gap-fix` — ship loop after design + journey
+
+## Skill load order (UI work)
+
+1. macos-design / macos-patterns / apple-design  
+2. ux-journey-pm  
+3. ui-ux-pro-max  
+4. autonomous-gap-fix  
 
 Hashes for vendored entrypoints are recorded in `skills-lock.json`.
