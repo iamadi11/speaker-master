@@ -22,12 +22,24 @@ End-to-end ship loop for **speaker-master** on the owner’s Mac.
 4. **Personal Mac install only** — free / ad-hoc signing; no paid Apple Developer assumptions; no notarization unless the user explicitly expands scope later.
 5. Obey product lock in `AGENTS.md` (Mac-only, no BlackHole GPL embed, no sync product, world-class bar).
 
+## Skill order when the gap is UI / journey
+
+Before inventing chrome or flows:
+
+1. `macos-design` / `macos-patterns` / `apple-design` — modern minimal native look  
+2. `ux-journey-pm` — journey map + checklist  
+3. `ui-ux-pro-max` — a11y only (defer visuals to macOS skills)  
+4. Then this skill’s ship loop  
+
+Visual bar: sparse macOS chrome over dense teal Custom clutter (`AGENTS.md`).
+
 ## Process
 
 ### 1. Investigate
 
 - Read `AGENTS.md`, `docs/product-brief.md`, `GLOSSARY.md`, open issues, recent PRs, failing tests, TODO/FIXME, and known gaps in `docs/`.
 - Prefer user-visible product gaps (Auto Measure|Narrow, Custom, taps permissions, persistence) over cosmetic refactors.
+- For UI gaps, also read `ux-journey-pm` + macOS design skills before proposing chrome.
 - Write a short gap list with severity. Confirm scope if more than one high-risk change.
 
 ### 2. Propose / fix
@@ -44,6 +56,8 @@ Run from repo root:
 swift test --package-path .
 # When App/Xcode scheme is present:
 xcodebuild -scheme SpeakerMaster -destination 'platform=macOS' build
+# Preferred crash gate before install:
+./Scripts/smoke-mac.sh full
 ```
 
 If CI exists on the PR, wait for green. **Stop here on failure** — do not merge, do not install.
