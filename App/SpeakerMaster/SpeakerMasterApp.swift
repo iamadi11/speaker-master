@@ -113,6 +113,25 @@ struct SpeakerMasterApp: App {
                 model.matchedCustomIntentID == "warmer" && model.customCanUndo,
                 "id=warmer"
             )
+            let harsh = CustomIntentCatalog.intent(id: "harsh-cut")!
+            model.applyCustomIntent(harsh)
+            check(
+                "custom_intent_harsh",
+                model.matchedCustomIntentID == "harsh-cut",
+                "id=harsh-cut"
+            )
+            let voice = CustomIntentCatalog.intent(id: "voice")!
+            model.applyCustomIntent(voice)
+            check(
+                "custom_intent_voice",
+                model.matchedCustomIntentID == "voice"
+                    && model.activeCurve.worstConstructiveGainDb(sampleRate: 48_000)
+                    <= SafetyLimits.maxTotalConstructiveGainDb + 0.15,
+                "id=voice"
+            )
+            // Restore Auto base so undo-from-warmer still lands on Narrow.
+            model.resetCustomToAuto()
+            model.applyCustomIntent(warmer)
             model.undoCustom()
             check(
                 "custom_undo",

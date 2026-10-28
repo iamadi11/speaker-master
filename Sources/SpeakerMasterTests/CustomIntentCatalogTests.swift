@@ -3,10 +3,30 @@ import Testing
 
 @Suite("Custom intent catalog")
 struct CustomIntentCatalogTests {
-    @Test("paper L0 intents are present")
+    @Test("paper L0 intents are present plus pass-3 power intents")
     func paperIntentsPresent() {
         let ids = Set(CustomIntentCatalog.all.map(\.id))
-        #expect(ids == ["balanced", "warmer", "clearer", "bass-tamed"])
+        #expect(ids.isSuperset(of: ["balanced", "warmer", "clearer", "bass-tamed"]))
+        #expect(ids.contains("harsh-cut"))
+        #expect(ids.contains("voice"))
+    }
+
+    @Test("harsh-cut prefers high-band cuts")
+    func harshCutPrefersCuts() {
+        let curve = CustomIntentCatalog.intent(id: "harsh-cut")!.curve
+        let air = curve.bands.first { $0.id == "band-air" }!
+        let presence = curve.bands.first { $0.id == "band-presence" }!
+        #expect(air.gainDb < 0)
+        #expect(presence.gainDb < 0)
+        #expect(curve.worstConstructiveGainDb(sampleRate: 48_000) <= SafetyLimits.maxTotalConstructiveGainDb)
+    }
+
+    @Test("voice lifts speech band under constructive ceiling")
+    func voiceLiftsSpeechUnderCap() {
+        let curve = CustomIntentCatalog.intent(id: "voice")!.curve
+        let mid = curve.bands.first { $0.id == "band-mid" }!
+        #expect(mid.gainDb > 0)
+        #expect(curve.worstConstructiveGainDb(sampleRate: 48_000) <= SafetyLimits.maxTotalConstructiveGainDb)
     }
 
     @Test("every intent curve obeys safety caps")

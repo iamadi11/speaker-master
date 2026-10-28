@@ -39,6 +39,18 @@ public enum CustomIntentCatalog: Sendable {
             summary: "Prefer cuts on boom — safer for small drivers.",
             curve: curve(gains: [-3.0, -1.5, 0, 0.5, 0], broadband: 0)
         ),
+        CustomIntent(
+            id: "harsh-cut",
+            title: "Harsh cut",
+            summary: "Pull grit and sizzle. Cut-first — not a loudness lift.",
+            curve: curve(gains: [0, -0.5, -1.0, -2.5, -3.0], broadband: 0)
+        ),
+        CustomIntent(
+            id: "voice",
+            title: "Voice",
+            summary: "Clear speech band; tame boom and air. Stays under caps.",
+            curve: curve(gains: [-2.0, -1.0, 2.0, 1.5, -1.0], broadband: 0)
+        ),
     ]
 
     public static func intent(id: String) -> CustomIntent? {
