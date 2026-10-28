@@ -131,40 +131,46 @@ struct AutoHomeView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("On for: \(model.outputIdentity.displayName)")
-                .font(SMTheme.titleFont)
-                .foregroundStyle(SMTheme.ink)
-            Text(pathLabel)
-                .font(SMTheme.bodyFont)
-                .foregroundStyle(SMTheme.muted)
-            if let note = model.measureNote {
-                Text(note)
-                    .font(SMTheme.captionFont)
+        VStack(alignment: .leading, spacing: SMTheme.spaceLG) {
+            VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
+                Text("On for: \(model.outputIdentity.displayName)")
+                    .font(SMTheme.titleFont)
+                    .foregroundStyle(SMTheme.ink)
+                Text(pathLabel)
+                    .font(SMTheme.bodyFont)
                     .foregroundStyle(SMTheme.muted)
+                if let note = model.measureNote {
+                    Text(note)
+                        .font(SMTheme.captionFont)
+                        .foregroundStyle(SMTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: SMTheme.spaceSM) {
                 BypassButton()
                 Button(model.player.isPlaying ? "Stop audition" : "Play audition") {
                     model.toggleAudition()
                 }
                 .buttonStyle(.bordered)
+                .frame(minHeight: 36)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: SMTheme.spaceSM) {
                 Button("Retry") { model.retry() }
                     .buttonStyle(.bordered)
+                    .frame(minHeight: 36)
                 Button("Open Custom") { model.tab = .custom }
                     .buttonStyle(.borderedProminent)
                     .tint(SMTheme.accent)
+                    .frame(minHeight: 36)
             }
 
             SystemHostStatusView()
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(28)
+        .padding(SMTheme.spaceLG)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
