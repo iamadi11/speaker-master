@@ -19,3 +19,14 @@ MacBook-only **system-wide** speaker EQ for personal use.
 ## Out of scope
 
 iPhone app, dual-BT sync product promise, cloud sync, App Store sandbox host, me-too “bass booster” marketing.
+
+## Phase-1 validation docs
+
+| Doc | Role |
+|---|---|
+| `docs/safety-limits.md` | Frozen safety caps |
+| `docs/paper-ux-flows.md` | Auto + Custom paper flows |
+| `docs/narrow-presets-sketch.md` | Narrow taxonomy + honesty |
+| `docs/listening-trial-guide.md` | User-run A/B/C listening protocol |
+| `docs/competitive-gap-note.md` | Dual-mode gap still open |
+| `docs/phase-1-checklist.md` | Gate checkboxes in-repo |
