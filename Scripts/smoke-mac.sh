@@ -57,6 +57,19 @@ if [[ "$MODE" == "measure" || "$MODE" == "full" ]]; then
     echo "dump-mics still lists process-tap aggregate as a Measure mic" >&2
     exit 1
   fi
+  # Bluetooth speaker playback twins (UID …:input without Microphone in the name)
+  # must not appear — they produce empty/weak Measure takes.
+  if awk -F'uid=' '/^mic/ && $2 ~ /:input$/ {
+      line=$0
+      if (line !~ /[Mm]icrophone/ && line !~ /[Aa]ir[Pp]ods/ && line !~ /[Ii][Pp]hone/ && line !~ /[Ii][Pp]ad/) {
+        print line; found=1
+      }
+    }
+    END { exit found ? 0 : 1 }' /tmp/speaker-master-dump-mics.out
+  then
+    echo "dump-mics lists a speaker :input twin as a Measure mic" >&2
+    exit 1
+  fi
 fi
 
 # Narrow / Custom / Bypass / audition without Microphone TCC
