@@ -20,6 +20,8 @@ targets:
         excludes:
           - README.md
           - Info.plist
+    # Info.plist + entitlements are restored after `xcodegen` by Scripts/build-app.sh
+    # (xcodegen templates wipe privacy usage strings). Path must still be wired here.
     info:
       path: SpeakerMaster/Info.plist
     settings:
@@ -39,9 +41,6 @@ targets:
         DEVELOPMENT_TEAM: ""
     entitlements:
       path: SpeakerMaster/SpeakerMaster.entitlements
-      properties:
-        # Omit app-sandbox (must stay off for process taps). Mic for Measure.
-        com.apple.security.device.audio-input: true
     dependencies:
       - package: SpeakerMasterPackage
         product: SpeakerMaster
