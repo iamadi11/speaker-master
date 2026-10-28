@@ -84,7 +84,7 @@ All curated Narrow curves must:
 4. Include a one-line **honest description** shown in UI.  
 5. Ship `generic-safe` that never sounds broken on wrong category.
 
-Numeric PEQ tables: **deferred** until listening trial — this sketch freezes *taxonomy + honesty*, not filter math.
+Numeric PEQ tables: **deferred** until listening trial (`docs/listening-trial-guide.md`) — this sketch freezes *taxonomy + honesty*, not filter math.
 
 ---
 
