@@ -27,45 +27,51 @@ struct MeasureFlowView: View {
 
                 stepRow
 
-                Form {
-                    Section {
-                        if model.mic.devices.isEmpty {
-                            Text("No mics found. Grant Microphone access or use Narrow.")
-                                .foregroundStyle(SMTheme.danger)
-                                .accessibilityLabel("No microphones found")
-                        } else {
-                            Picker("Microphone", selection: Binding(
-                                get: { model.mic.selectedDeviceID ?? "" },
-                                set: { model.mic.selectedDeviceID = $0 }
-                            )) {
-                                ForEach(model.mic.devices) { device in
-                                    Text(device.name).tag(device.id)
-                                }
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("1 · Microphone")
+                        .font(SMTheme.captionFont.weight(.semibold))
+                        .foregroundStyle(SMTheme.muted)
+                    if model.mic.devices.isEmpty {
+                        Text("No mics found. Grant Microphone access or use Narrow.")
+                            .foregroundStyle(SMTheme.danger)
+                            .accessibilityLabel("No microphones found")
+                    } else {
+                        Picker("Microphone", selection: Binding(
+                            get: { model.mic.selectedDeviceID ?? "" },
+                            set: { model.mic.selectedDeviceID = $0 }
+                        )) {
+                            ForEach(model.mic.devices) { device in
+                                Text(device.name).tag(device.id)
                             }
-                            .accessibilityLabel("Microphone input")
                         }
-                        Button("Refresh list") { model.mic.refreshDevices() }
-                            .accessibilityHint("Rescan available microphones")
-                    } header: {
-                        Text("1 · Microphone")
-                    } footer: {
-                        Text("Built-in is fine for a first pass. A USB measurement mic is more accurate. Last choice is remembered.")
+                        .labelsHidden()
+                        .accessibilityLabel("Microphone input")
                     }
-
-                    Section {
-                        Label(
-                            "Point the mic toward the speaker from a typical listen seat. Keep the room quiet. Use a comfortable volume — we never force max.",
-                            systemImage: "arrow.up.forward.circle"
-                        )
-                        .font(SMTheme.bodyFont)
-                        .foregroundStyle(SMTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    } header: {
-                        Text("2 · Place & level")
+                    HStack {
+                        Button("Refresh list") { model.mic.refreshDevices() }
+                            .buttonStyle(.bordered)
+                            .accessibilityHint("Rescan available microphones")
+                        Text("Built-in OK for a first pass · last choice remembered")
+                            .font(SMTheme.captionFont)
+                            .foregroundStyle(SMTheme.muted)
                     }
                 }
-                .formStyle(.grouped)
-                .frame(maxHeight: 320)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(SMTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(SMTheme.border, lineWidth: 1)
+                )
+
+                Label(
+                    "2 · Place mic toward the speaker, quiet room, comfortable volume — we never force max.",
+                    systemImage: "arrow.up.forward.circle"
+                )
+                .font(SMTheme.bodyFont)
+                .foregroundStyle(SMTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
 
                 if let note = model.measureNote {
                     Text(note)
@@ -116,8 +122,6 @@ struct MeasureFlowView: View {
                     .foregroundStyle(SMTheme.muted)
 
                 SystemHostStatusView()
-
-                Spacer(minLength: 0)
             }
             .padding(28)
         }
