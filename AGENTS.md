@@ -9,7 +9,7 @@ MacBook-only **system-wide** speaker EQ. Personal use. Free Apple ID / local sig
 | Platform | **MacBook only** — no iPhone, no sync product, no PWA |
 | Job | Make the **currently connected speaker** sound as good as software safely can — system-wide |
 | Auto | User chooses **Measure** (mic) **or** **Narrow** (presets) |
-| Measure | Mic-based correction; user picks any available mic (built-in, USB, …) |
+| Measure | Record (user-selected mic) → analyze → apply best safe Auto EQ; see `docs/agent-measure-loop.md` |
 | Narrow | No mic; apply once; **persist per speaker** until Retry / new speaker |
 | Custom | Pro console, easy UX — progressive disclosure, not dumbed-down |
 | Host | Core Audio **process taps** (user macOS 26.5.1+) |
