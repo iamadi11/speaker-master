@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import Foundation
 import SpeakerMaster
 
@@ -7,16 +8,47 @@ struct MicDevice: Identifiable, Hashable {
     var name: String
 }
 
+enum MicRecorderError: LocalizedError {
+    case noDeviceSelected
+    case deviceNotInput(String)
+    case cannotBindInput(String)
+    case engineStartFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .noDeviceSelected:
+            return "Select a microphone first"
+        case .deviceNotInput(let name):
+            return "“\(name)” has no input streams — pick another mic"
+        case .cannotBindInput(let detail):
+            return "Could not use that mic (\(detail))"
+        case .engineStartFailed(let detail):
+            return "Mic engine failed to start (\(detail))"
+        }
+    }
+}
+
 @MainActor
 final class MicRecorder: ObservableObject {
+    private static let lastMicKey = "speaker-master.lastMicUID"
+
     @Published private(set) var devices: [MicDevice] = []
-    @Published var selectedDeviceID: String?
+    @Published var selectedDeviceID: String? {
+        didSet {
+            if let selectedDeviceID {
+                UserDefaults.standard.set(selectedDeviceID, forKey: Self.lastMicKey)
+            }
+        }
+    }
     @Published private(set) var permission: AVAuthorizationStatus = .notDetermined
     @Published private(set) var isRecording = false
+    /// Rough peak of the latest capture (0…1) for UI honesty after a run.
+    @Published private(set) var lastPeakLinear: Float = 0
 
     private var engine: AVAudioEngine?
     private var samples: [Float] = []
     private var sampleRate: Double = 48_000
+    private var tapInstalled = false
 
     init() {
         permission = AVCaptureDevice.authorizationStatus(for: .audio)
@@ -30,7 +62,13 @@ final class MicRecorder: ObservableObject {
             position: .unspecified
         ).devices.map { MicDevice(id: $0.uniqueID, name: $0.localizedName) }
         devices = list
-        if selectedDeviceID == nil {
+
+        let remembered = UserDefaults.standard.string(forKey: Self.lastMicKey)
+        if let remembered, list.contains(where: { $0.id == remembered }) {
+            selectedDeviceID = remembered
+        } else if let selectedDeviceID, list.contains(where: { $0.id == selectedDeviceID }) {
+            // keep current selection
+        } else {
             selectedDeviceID = list.first?.id
         }
     }
@@ -47,42 +85,128 @@ final class MicRecorder: ObservableObject {
         return granted
     }
 
-    /// Play stimulus via `player` while capturing mic for `duration`.
+    /// Play stimulus via `player` while capturing the **user-selected** mic for `duration`.
+    /// Samples stay in memory only; cleared after return (no durable capture files).
     func recordWhilePlaying(
         duration: TimeInterval,
         player: InAppEQPlayer,
         stimulusCurve: EQCurve
     ) async throws -> (samples: [Float], sampleRate: Double) {
+        guard let uid = selectedDeviceID else {
+            throw MicRecorderError.noDeviceSelected
+        }
+        let displayName = devices.first(where: { $0.id == uid })?.name ?? uid
+        let deviceID: AudioDeviceID
+        do {
+            deviceID = try CoreAudioDeviceLookup.resolveDeviceID(uid: uid)
+        } catch {
+            throw MicRecorderError.cannotBindInput(error.localizedDescription)
+        }
+        guard CoreAudioDeviceLookup.inputStreamCount(for: deviceID) > 0 else {
+            throw MicRecorderError.deviceNotInput(displayName)
+        }
+
         samples = []
+        lastPeakLinear = 0
         let engine = AVAudioEngine()
         self.engine = engine
+
+        do {
+            try Self.bindInputDevice(deviceID, on: engine)
+        } catch {
+            cleanupEngine()
+            throw MicRecorderError.cannotBindInput(error.localizedDescription)
+        }
+
+        engine.prepare()
         let input = engine.inputNode
         let format = input.inputFormat(forBus: 0)
         sampleRate = format.sampleRate > 0 ? format.sampleRate : 48_000
 
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            guard let channel = buffer.floatChannelData?[0] else { return }
-            let count = Int(buffer.frameLength)
-            let chunk = Array(UnsafeBufferPointer(start: channel, count: count))
-            Task { @MainActor in
-                self?.samples.append(contentsOf: chunk)
+        // Shared buffer: audio thread appends; MainActor reads only after tap removed + engine stopped.
+        final class SampleBuffer: @unchecked Sendable {
+            private let lock = NSLock()
+            private var values: [Float] = []
+
+            init(capacity: Int) {
+                values.reserveCapacity(capacity)
+            }
+
+            func append(_ chunk: [Float]) {
+                lock.lock()
+                values.append(contentsOf: chunk)
+                lock.unlock()
+            }
+
+            func snapshot() -> [Float] {
+                lock.lock()
+                defer { lock.unlock() }
+                return values
             }
         }
 
-        try engine.start()
+        let buffer = SampleBuffer(capacity: Int(sampleRate * duration) + 4096)
+
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buf, _ in
+            guard let channel = buf.floatChannelData?[0] else { return }
+            let count = Int(buf.frameLength)
+            let chunk = Array(UnsafeBufferPointer(start: channel, count: count))
+            buffer.append(chunk)
+        }
+        tapInstalled = true
+
+        do {
+            try engine.start()
+        } catch {
+            cleanupEngine()
+            throw MicRecorderError.engineStartFailed(error.localizedDescription)
+        }
         isRecording = true
-        try player.start(mode: .sweep, curve: stimulusCurve)
+
+        do {
+            try player.start(mode: .sweep, curve: stimulusCurve)
+        } catch {
+            cleanupEngine()
+            throw error
+        }
 
         try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
 
         player.stop()
-        input.removeTap(onBus: 0)
-        engine.stop()
-        isRecording = false
-        self.engine = nil
+        cleanupEngine()
 
-        let captured = samples
+        let captured = buffer.snapshot()
         samples = []
+        lastPeakLinear = captured.map { abs($0) }.max() ?? 0
         return (captured, sampleRate)
+    }
+
+    private func cleanupEngine() {
+        if let engine {
+            if tapInstalled {
+                engine.inputNode.removeTap(onBus: 0)
+                tapInstalled = false
+            }
+            engine.stop()
+        }
+        engine = nil
+        isRecording = false
+    }
+
+    /// Bind HAL input device to `AVAudioEngine`’s input node (macOS).
+    private static func bindInputDevice(_ deviceID: AudioDeviceID, on engine: AVAudioEngine) throws {
+        guard let audioUnit = engine.inputNode.audioUnit else {
+            throw MicRecorderError.cannotBindInput("missing input AudioUnit")
+        }
+        var id = deviceID
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &id,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+        try CoreAudioDeviceLookup.check(status, operation: "set CurrentDevice on input")
     }
 }
