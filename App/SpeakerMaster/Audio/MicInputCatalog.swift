@@ -60,8 +60,14 @@ enum MicInputCatalog {
             ), !uid.isEmpty else { continue }
             guard seen.insert(uid).inserted else { continue }
 
-            // Skip our process-tap aggregate — not a room mic for Measure.
+            // Skip process-tap / system aggregates — not room mics for Measure.
             if uid.hasPrefix("com.iamadi11.SpeakerMaster.agg") { continue }
+            if uid.hasPrefix("CADefaultDeviceAggregate") { continue }
+            let lowerName = (CoreAudioDeviceLookup.stringProperty(
+                deviceID,
+                kAudioObjectPropertyName
+            ) ?? uid).lowercased()
+            if lowerName.contains("aggregate") { continue }
 
             let name = CoreAudioDeviceLookup.stringProperty(
                 deviceID,
