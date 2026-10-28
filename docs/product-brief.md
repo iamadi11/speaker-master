@@ -11,7 +11,7 @@ MacBook-only **system-wide** speaker EQ for personal use.
 
 ## Architecture intent
 
-- Swift / Core Audio **process taps** (macOS 14.2+; target machine 26.5.1+) for **system-wide EQ host** after Apply
+- Swift / Core Audio **process taps** (macOS 14.2+; target machine 26.5.1+) for **system-wide EQ host** after Apply — see `docs/system-wide-audio.md`
 - Measure **input** is the **microphone** (room sound); tap is not a substitute for acoustic measure
 - Soft limiter + boost caps (see `docs/safety-limits.md`) — “best” config means best **within** those caps
 - No BlackHole / GPL virtual-device embed

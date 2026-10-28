@@ -9,7 +9,11 @@
 /* Begin PBXBuildFile section */
 		05DFF7898510432F7D44A123 /* AutoContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B1CEDD8BA2430D782EA09E /* AutoContainerView.swift */; };
 		12AAFE9ADF4A910E6F1F04EE /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B9FD9BC985D9656043CCA /* Theme.swift */; };
+		17DDF1E09DEA586BB570FC43 /* CoreAudioDeviceLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD17382FDA31F7F497256F4 /* CoreAudioDeviceLookup.swift */; };
+		184DF9F9C350636B9C3E379F /* ProcessTapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E13129AE89EF6292171193 /* ProcessTapEngine.swift */; };
 		2E169D3991B6582E4397694E /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453C5C95F2DBB24CE823C173 /* RootView.swift */; };
+		3366B957EB1173D84E2B597F /* SystemHostStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66124633D6A54BF0494ADD15 /* SystemHostStatusView.swift */; };
+		407BBFA54863AE549A5DF0FD /* AudioBufferListUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C4CACBEBB6BFE9F2BB5D236 /* AudioBufferListUtils.swift */; };
 		4DF42787D272D449EE9716FA /* NarrowFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D24C3EF74B45537FBFDA579 /* NarrowFlowView.swift */; };
 		4F688A8C9CED3D11D5B8746B /* BypassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB6ACD7D98C3039A0E38E4B8 /* BypassButton.swift */; };
 		551492696DC6B4AF2467FB21 /* CustomEQView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4CB2008E8F3963A503F864 /* CustomEQView.swift */; };
@@ -22,6 +26,7 @@
 		E53006E95B340C0AD299A275 /* SystemAudioHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00932D1FE6AC62771A20323 /* SystemAudioHost.swift */; };
 		E8E66716023B6E4D11DA611D /* OutputDeviceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D492432719856DCE48D66F /* OutputDeviceMonitor.swift */; };
 		F195028A5DBA76356ED9661D /* MicRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC6D9EC5512CEFD23DA5813 /* MicRecorder.swift */; };
+		F9089D209C9720921EC7FFCC /* ProcessTapCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92AB0654ABA3B94AC638A741 /* ProcessTapCapture.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,11 +35,17 @@
 		3A42FE6BB41D870B89110E2A /* InAppEQPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppEQPlayer.swift; sourceTree = "<group>"; };
 		40FB0DF60B384D7EC51F6734 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		453C5C95F2DBB24CE823C173 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		4C4CACBEBB6BFE9F2BB5D236 /* AudioBufferListUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioBufferListUtils.swift; sourceTree = "<group>"; };
 		4CC6D9EC5512CEFD23DA5813 /* MicRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicRecorder.swift; sourceTree = "<group>"; };
+		4FD17382FDA31F7F497256F4 /* CoreAudioDeviceLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioDeviceLookup.swift; sourceTree = "<group>"; };
 		583193F1C048ACEF7A592756 /* MeasureFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureFlowView.swift; sourceTree = "<group>"; };
 		5D24C3EF74B45537FBFDA579 /* NarrowFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrowFlowView.swift; sourceTree = "<group>"; };
+		66124633D6A54BF0494ADD15 /* SystemHostStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHostStatusView.swift; sourceTree = "<group>"; };
 		6C4CB2008E8F3963A503F864 /* CustomEQView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEQView.swift; sourceTree = "<group>"; };
+		7109CFAB1B0F9B5DF6D477C9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		92AB0654ABA3B94AC638A741 /* ProcessTapCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapCapture.swift; sourceTree = "<group>"; };
 		A09F2BC87B2968B95F0981A3 /* SpeakerMasterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerMasterApp.swift; sourceTree = "<group>"; };
+		A0E13129AE89EF6292171193 /* ProcessTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapEngine.swift; sourceTree = "<group>"; };
 		A8D492432719856DCE48D66F /* OutputDeviceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDeviceMonitor.swift; sourceTree = "<group>"; };
 		BBCC904DCEDE5C40FA5EC825 /* SpeakerMasterApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpeakerMasterApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C00932D1FE6AC62771A20323 /* SystemAudioHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioHost.swift; sourceTree = "<group>"; };
@@ -56,9 +67,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		2FE8777F8D6BE51341B233E0 /* ProcessTap */ = {
+			isa = PBXGroup;
+			children = (
+				4C4CACBEBB6BFE9F2BB5D236 /* AudioBufferListUtils.swift */,
+				4FD17382FDA31F7F497256F4 /* CoreAudioDeviceLookup.swift */,
+				92AB0654ABA3B94AC638A741 /* ProcessTapCapture.swift */,
+				A0E13129AE89EF6292171193 /* ProcessTapEngine.swift */,
+			);
+			path = ProcessTap;
+			sourceTree = "<group>";
+		};
 		4F182C242D7C8414699CA6AB /* Audio */ = {
 			isa = PBXGroup;
 			children = (
+				2FE8777F8D6BE51341B233E0 /* ProcessTap */,
 				3A42FE6BB41D870B89110E2A /* InAppEQPlayer.swift */,
 				4CC6D9EC5512CEFD23DA5813 /* MicRecorder.swift */,
 				A8D492432719856DCE48D66F /* OutputDeviceMonitor.swift */,
@@ -73,6 +96,7 @@
 				4F182C242D7C8414699CA6AB /* Audio */,
 				93CC60724DE52BBC02AD2290 /* Views */,
 				40FB0DF60B384D7EC51F6734 /* AppModel.swift */,
+				7109CFAB1B0F9B5DF6D477C9 /* Info.plist */,
 				FF05EA50AD0DF7D716D27E42 /* SpeakerMaster.entitlements */,
 				A09F2BC87B2968B95F0981A3 /* SpeakerMasterApp.swift */,
 				2A2B9FD9BC985D9656043CCA /* Theme.swift */,
@@ -90,6 +114,7 @@
 				1B8281FBBBABD2C4FBD9B016 /* MenuBarView.swift */,
 				5D24C3EF74B45537FBFDA579 /* NarrowFlowView.swift */,
 				453C5C95F2DBB24CE823C173 /* RootView.swift */,
+				66124633D6A54BF0494ADD15 /* SystemHostStatusView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -151,6 +176,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					9BD9D795DB34C0986FE8E2FF = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -183,8 +209,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				76FBE9A3F3DC57E56AA20F07 /* AppModel.swift in Sources */,
+				407BBFA54863AE549A5DF0FD /* AudioBufferListUtils.swift in Sources */,
 				05DFF7898510432F7D44A123 /* AutoContainerView.swift in Sources */,
 				4F688A8C9CED3D11D5B8746B /* BypassButton.swift in Sources */,
+				17DDF1E09DEA586BB570FC43 /* CoreAudioDeviceLookup.swift in Sources */,
 				551492696DC6B4AF2467FB21 /* CustomEQView.swift in Sources */,
 				6251FD92F3032F4CE49DCC36 /* InAppEQPlayer.swift in Sources */,
 				AB0ACCCE4193B6DE4EFFFB01 /* MeasureFlowView.swift in Sources */,
@@ -192,9 +220,12 @@
 				F195028A5DBA76356ED9661D /* MicRecorder.swift in Sources */,
 				4DF42787D272D449EE9716FA /* NarrowFlowView.swift in Sources */,
 				E8E66716023B6E4D11DA611D /* OutputDeviceMonitor.swift in Sources */,
+				F9089D209C9720921EC7FFCC /* ProcessTapCapture.swift in Sources */,
+				184DF9F9C350636B9C3E379F /* ProcessTapEngine.swift in Sources */,
 				2E169D3991B6582E4397694E /* RootView.swift in Sources */,
 				742DACB279368ED6E8ABF329 /* SpeakerMasterApp.swift in Sources */,
 				E53006E95B340C0AD299A275 /* SystemAudioHost.swift in Sources */,
+				3366B957EB1173D84E2B597F /* SystemHostStatusView.swift in Sources */,
 				12AAFE9ADF4A910E6F1F04EE /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -326,16 +357,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = SpeakerMaster/SpeakerMaster.entitlements;
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpeakerMaster/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Speaker Master";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSAudioCaptureUsageDescription = "Speaker Master processes system audio so Auto and Custom EQ can apply to what this Mac is playing.";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Speaker Master may open System Settings so you can grant Screen and System Audio Recording.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Speaker Master briefly records through the mic you select so Measure can improve this speaker. Captures stay on this Mac and are deleted after analysis.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -354,16 +388,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = SpeakerMaster/SpeakerMaster.entitlements;
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpeakerMaster/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Speaker Master";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSAudioCaptureUsageDescription = "Speaker Master processes system audio so Auto and Custom EQ can apply to what this Mac is playing.";
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Speaker Master may open System Settings so you can grant Screen and System Audio Recording.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Speaker Master briefly records through the mic you select so Measure can improve this speaker. Captures stay on this Mac and are deleted after analysis.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

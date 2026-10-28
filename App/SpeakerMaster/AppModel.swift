@@ -49,6 +49,7 @@ final class AppModel: ObservableObject {
 
     func restoreIfPossible() {
         output.refresh()
+        systemHost.setOutputUID(output.identity.outputUID)
         headphoneWarning = NarrowCatalog.looksLikeHeadphones(deviceName: output.identity.displayName)
         if let profile = profiles.profile(forOutputUID: output.identity.outputUID),
            persistence.shouldReuseProfile(stored: profile.identity, current: output.identity)

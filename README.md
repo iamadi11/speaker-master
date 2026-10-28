@@ -2,16 +2,13 @@
 
 MacBook **system-wide** speaker EQ — **Auto** (Measure | Narrow) + pro **Custom** console.
 
-Personal use. Swift / Core Audio. Free Apple ID / ad-hoc signing.
+Personal use. Swift / Core Audio **process tap + private aggregate**. Free Apple ID / ad-hoc signing.
 
 ## Launch on this Mac
 
 ```bash
-# Verify domain + build .app
+# Verify domain + build .app + install
 swift test --package-path .
-./Scripts/build-app.sh
-
-# Install to ~/Applications and open
 ./Scripts/install-personal.sh
 ```
 
@@ -32,9 +29,19 @@ cd App && xcodegen generate && open SpeakerMaster.xcodeproj
 ### First-run tips
 
 1. Pick **Auto → Narrow** for a fast audible change (no mic), or **Measure** with mic permission.
-2. Tap **Play audition** and toggle **Bypass** to A/B the EQ.
-3. **Custom** exposes five bands + broadband within `docs/safety-limits.md`.
-4. v1 proves EQ via **in-app audition**; system-wide process tap is staged next (no BlackHole).
+2. Grant **Screen & System Audio Recording** when macOS prompts — required for Spotify/YouTube/etc.
+3. Toggle **Bypass** to A/B. Use **Play audition** to hear the curve in-app without relying on other apps.
+4. **Custom** exposes five bands + broadband within `docs/safety-limits.md`.
+5. Details: [`docs/system-wide-audio.md`](./docs/system-wide-audio.md).
+
+### Grant permissions
+
+| Need | Path |
+|---|---|
+| System-wide EQ | System Settings → Privacy & Security → **Screen & System Audio Recording** → Speaker Master |
+| Measure mic | System Settings → Privacy & Security → **Microphone** → Speaker Master |
+
+Then **Retry system EQ** in the app if the host still shows permission needed.
 
 ## Repo
 
@@ -46,9 +53,10 @@ cd App && xcodegen generate && open SpeakerMaster.xcodeproj
 - Conventions: [`AGENTS.md`](./AGENTS.md)
 - Workflow: [`docs/agent-workflow.md`](./docs/agent-workflow.md)
 - Safety: [`docs/safety-limits.md`](./docs/safety-limits.md)
+- System-wide host: [`docs/system-wide-audio.md`](./docs/system-wide-audio.md)
 
-**Skills used for v1:** `ui-ux-pro-max` (desktop/SwiftUI chrome), Matt Pocock `tdd` / `implement` + `matt-pocock-swift-adapter` (domain seams). `/autonomous-gap-fix` only after verify for polish.
+**Skills:** `ui-ux-pro-max` (status + permission recovery), Matt Pocock `tdd` / `implement` + `matt-pocock-swift-adapter` (`AudioTapHosting`, `StereoEQEngine` seams).
 
 ## Non-goals
 
-No iPhone/sync product, no BlackHole GPL embed, no $99-required distribution, no me-too EQ fluff.
+No iPhone/sync product, no BlackHole GPL embed, no sandboxed Mac App Store host, no $99-required distribution, no me-too EQ fluff.
