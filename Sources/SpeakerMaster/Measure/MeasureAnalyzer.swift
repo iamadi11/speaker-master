@@ -84,6 +84,8 @@ public enum MeasureAnalyzer: Sendable {
             )
         }
 
+        let nearClip = peak >= 0.85
+
         let rms = rootMeanSquare(analysis)
         let crestDb = peak > 0 && rms > 1e-9
             ? 20 * log10(Double(peak) / Double(rms))
@@ -150,8 +152,18 @@ public enum MeasureAnalyzer: Sendable {
         }
 
         let curve = EQCurve(bands: bands, broadbandGainDb: 0, bypassed: false).sanitized()
-        let quality = classifyQuality(peakDb: peakDb, snrDb: snrDb, relativeBandDb: relativeBandDb)
-        let notes = honestyNotes(quality: quality, snrDb: snrDb, relativeBandDb: relativeBandDb)
+        // Near-clip takes stay cut-first but never claim “good” — honesty over optimism.
+        var quality = classifyQuality(peakDb: peakDb, snrDb: snrDb, relativeBandDb: relativeBandDb)
+        if nearClip, quality == .good {
+            quality = .inconclusive
+        }
+        let notes = honestyNotes(
+            quality: quality,
+            snrDb: snrDb,
+            relativeBandDb: relativeBandDb,
+            nearClip: nearClip,
+            constructiveDb: curve.worstConstructiveGainDb(sampleRate: sampleRate)
+        )
         return MeasureAnalysisResult(
             quality: quality,
             correction: curve,
@@ -198,17 +210,27 @@ public enum MeasureAnalyzer: Sendable {
     private static func honestyNotes(
         quality: MeasureAnalysisResult.Quality,
         snrDb: Double,
-        relativeBandDb: [Double]
+        relativeBandDb: [Double],
+        nearClip: Bool,
+        constructiveDb: Double
     ) -> String {
         let cuts = relativeBandDb.filter { $0 > 1.5 }.count
+        let capNote = String(
+            format: "constructive ≤ %+.1f / +%.0f dB",
+            min(constructiveDb, SafetyLimits.maxTotalConstructiveGainDb),
+            SafetyLimits.maxTotalConstructiveGainDb
+        )
         switch quality {
         case .good:
-            return "Cut-first correction within safety caps · ~\(Int(snrDb.rounded())) dB SNR est. · limiter on"
+            return "Cut-first correction within safety caps · ~\(Int(snrDb.rounded())) dB SNR est. · \(capNote) · limiter on"
         case .inconclusive:
-            if cuts > 0 {
-                return "Usable but cautious — re-level / quieter room next time · \(cuts) peak band(s) cut"
+            if nearClip {
+                return "Near-clip take — correction proposed softer; lower level next time · \(capNote)"
             }
-            return "Hot or uneven take — correction proposed; re-level recommended"
+            if cuts > 0 {
+                return "Usable but cautious — re-level / quieter room next time · \(cuts) peak band(s) cut · \(capNote)"
+            }
+            return "Hot or uneven take — correction proposed; re-level recommended · \(capNote)"
         case .badTake:
             return "Bad take — nothing applied"
         }

@@ -60,9 +60,11 @@ private final class InAppEQRenderState: @unchecked Sendable {
                 case .sweep:
                     phase += 1
                     let t = phase / sr
-                    let f = 60.0 * pow(200.0, (t.truncatingRemainder(dividingBy: 2.0)) / 2.0)
+                    // Log sweep ~60 Hz → 12 kHz. Amplitude kept comfortable but
+                    // high enough for Built-in mic in a quiet room (pass-3 honesty).
+                    let f = 60.0 * pow(200.0, (t.truncatingRemainder(dividingBy: 2.5)) / 2.5)
                     let ang = 2 * Double.pi * f * t
-                    raw = Float(0.15 * sin(ang))
+                    raw = Float(0.22 * sin(ang))
                 }
                 data[i] = eqEngine.process(raw)
             }

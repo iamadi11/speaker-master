@@ -217,6 +217,9 @@ final class MicRecorder: ObservableObject {
             throw MicRecorderError.engineStartFailed("record() returned false")
         }
 
+        // Short pre-settle so AVAudioRecorder / default-input bind stabilize before stimulus.
+        try await Task.sleep(nanoseconds: 250_000_000)
+
         do {
             try player.start(mode: .sweep, curve: stimulusCurve)
         } catch {
@@ -227,6 +230,8 @@ final class MicRecorder: ObservableObject {
         try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
 
         player.stop()
+        // Brief post-settle captures room ring without truncating the sweep body.
+        try await Task.sleep(nanoseconds: 150_000_000)
         recorder.stop()
 
         let captured: [Float]

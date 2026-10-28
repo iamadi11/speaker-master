@@ -30,12 +30,44 @@ public struct EQCurve: Hashable, Sendable, Codable {
         ("band-air", 10000, 0.9),
     ]
 
+    /// Probe grid for total constructive-gain enforcement (`docs/safety-limits.md` §2).
+    public static let constructiveProbeHz: [Double] = [
+        40, 60, 80, 120, 250, 500, 1_000, 2_000, 3_500, 6_000, 10_000, 16_000,
+    ]
+
+    /// Clamp per-band / broadband ceilings, then scale overlapping positive gain so
+    /// approximate magnitude never exceeds `SafetyLimits.maxTotalConstructiveGainDb`.
     public func sanitized() -> EQCurve {
-        EQCurve(
-            bands: bands.map { $0.sanitized() },
-            broadbandGainDb: SafetyLimits.clampBroadbandGain(broadbandGainDb),
-            bypassed: bypassed
-        )
+        var nextBands = bands.map { $0.sanitized() }
+        var broadband = SafetyLimits.clampBroadbandGain(broadbandGainDb)
+        // Iteratively scale positive boosts (+ broadband) until the worst probe is in cap.
+        for _ in 0..<8 {
+            let probe = EQCurve(bands: nextBands, broadbandGainDb: broadband, bypassed: false)
+            let worst = probe.worstConstructiveGainDb(sampleRate: 48_000)
+            guard worst > SafetyLimits.maxTotalConstructiveGainDb + 1e-6 else { break }
+            let scale = SafetyLimits.maxTotalConstructiveGainDb / worst
+            for i in nextBands.indices where nextBands[i].gainDb > 0 {
+                nextBands[i].gainDb *= scale
+            }
+            if broadband > 0 {
+                broadband *= scale
+            }
+        }
+        return EQCurve(bands: nextBands, broadbandGainDb: broadband, bypassed: bypassed)
+    }
+
+    /// Worst-case approximate constructive magnitude across the probe grid (dB).
+    /// Cuts do not reduce this — only positive contributions + broadband count upward.
+    public func worstConstructiveGainDb(sampleRate: Double) -> Double {
+        if bypassed { return 0 }
+        return Self.constructiveProbeHz
+            .map { approximateMagnitudeDb(atFrequencyHz: $0, sampleRate: sampleRate) }
+            .max() ?? 0
+    }
+
+    /// Headroom under the total constructive ceiling at the hottest probe (dB ≥ 0 when under cap).
+    public func constructiveHeadroomDb(sampleRate: Double = 48_000) -> Double {
+        SafetyLimits.maxTotalConstructiveGainDb - worstConstructiveGainDb(sampleRate: sampleRate)
     }
 
     /// Rough magnitude estimate for tests / UI preview (not a full FFT analyzer).

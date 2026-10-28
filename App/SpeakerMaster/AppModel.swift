@@ -164,8 +164,9 @@ final class AppModel: ObservableObject {
         measurePhase = .recording
 
         do {
+            // Longer sweep + MicRecorder pre/post settle → better Built-in SNR in quiet rooms.
             let capture = try await mic.recordWhilePlaying(
-                duration: 2.2,
+                duration: 2.8,
                 player: player,
                 stimulusCurve: .flat
             )
