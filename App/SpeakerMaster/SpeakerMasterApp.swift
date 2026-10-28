@@ -235,6 +235,10 @@ struct SpeakerMasterApp: App {
                 // Continuity/iPhone mics often return empty buffers in automated smokes.
                 model.mic.preferBuiltInMicrophoneIfAvailable()
                 print("smoke_mic_count=\(model.mic.devices.count)")
+                for device in model.mic.devices {
+                    let mark = device.id == model.mic.selectedDeviceID ? "*" : " "
+                    print("smoke_mic\(mark) \(device.name) uid=\(device.id)")
+                }
                 print("smoke_mic_selected=\(model.mic.selectedDeviceID ?? "nil")")
                 if model.mic.devices.isEmpty || model.mic.selectedDeviceID == nil {
                     print("smoke_fail=empty_mic_list")
