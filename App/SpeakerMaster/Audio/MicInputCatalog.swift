@@ -60,19 +60,15 @@ enum MicInputCatalog {
             ), !uid.isEmpty else { continue }
             guard seen.insert(uid).inserted else { continue }
 
-            // Skip process-tap / system aggregates — not room mics for Measure.
-            if uid.hasPrefix("com.iamadi11.SpeakerMaster.agg") { continue }
-            if uid.hasPrefix("CADefaultDeviceAggregate") { continue }
-            let lowerName = (CoreAudioDeviceLookup.stringProperty(
-                deviceID,
-                kAudioObjectPropertyName
-            ) ?? uid).lowercased()
-            if lowerName.contains("aggregate") { continue }
-
             let name = CoreAudioDeviceLookup.stringProperty(
                 deviceID,
                 kAudioObjectPropertyName
             ) ?? uid
+            // Skip process-tap / system aggregates — not room mics for Measure.
+            if uid.hasPrefix("com.iamadi11.SpeakerMaster.agg") { continue }
+            if uid.hasPrefix("CADefaultDeviceAggregate") { continue }
+            if name.lowercased().contains("aggregate") { continue }
+
             let device = MicDevice(id: uid, name: name)
             guard isMeasureMicCandidate(device, outputTwinBases: outputTwinBases) else { continue }
 

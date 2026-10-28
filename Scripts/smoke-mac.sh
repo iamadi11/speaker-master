@@ -53,8 +53,8 @@ if [[ "$MODE" == "measure" || "$MODE" == "full" ]]; then
     echo "dump-mics reported empty mic_count" >&2
     exit 1
   fi
-  if grep -q 'Speaker Master Aggregate' /tmp/speaker-master-dump-mics.out; then
-    echo "dump-mics still lists process-tap aggregate as a Measure mic" >&2
+  if grep -qE 'Speaker Master Aggregate|CADefaultDeviceAggregate' /tmp/speaker-master-dump-mics.out; then
+    echo "dump-mics still lists an aggregate as a Measure mic" >&2
     exit 1
   fi
   # Bluetooth speaker playback twins (UID …:input without Microphone in the name)
