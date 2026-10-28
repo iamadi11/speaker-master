@@ -14,11 +14,10 @@ if [[ "${SPEAKER_MASTER_FORCE_ADHOC:-}" == "1" ]]; then
   SIGN_MODE="adhoc"
 fi
 
-echo "==> Verify: swift test"
-swift test --package-path .
+echo "==> Crash gate: smoke-mac full (swift test + build + 30s audio smokes)"
+"$ROOT/Scripts/smoke-mac.sh" full
 
-echo "==> Build .app (signing mode=$SIGN_MODE team=${DEVELOPMENT_TEAM:-none})"
-"$ROOT/Scripts/build-app.sh"
+echo "==> Re-resolve signing after smoke build (mode=$SIGN_MODE team=${DEVELOPMENT_TEAM:-none})"
 
 # Re-read after build (build-app resolves the same way).
 eval "$("$ROOT/Scripts/resolve-signing.sh")"

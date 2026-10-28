@@ -31,10 +31,9 @@ final class OutputDeviceMonitor: ObservableObject {
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-            Task { @MainActor in
-                self?.refresh()
-            }
+        // Build listener off MainActor isolation; hop to MainActor only inside Task.
+        let block = Self.makeListenerBlock { [weak self] in
+            self?.refresh()
         }
         listenerBlock = block
         AudioObjectAddPropertyListenerBlock(
@@ -43,6 +42,16 @@ final class OutputDeviceMonitor: ObservableObject {
             DispatchQueue.main,
             block
         )
+    }
+
+    private nonisolated static func makeListenerBlock(
+        onChange: @escaping @MainActor () -> Void
+    ) -> AudioObjectPropertyListenerBlock {
+        { _, _ in
+            Task { @MainActor in
+                onChange()
+            }
+        }
     }
 
     static func currentDefaultOutput() -> SpeakerIdentity {
