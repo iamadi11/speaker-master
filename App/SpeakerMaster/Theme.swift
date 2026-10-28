@@ -36,17 +36,48 @@ enum SMTheme {
     }
 }
 
-extension View {
-    /// Bordered control with readable ink on light graphite surfaces (fixes washed-out macOS default).
-    func smBorderedButton() -> some View {
-        buttonStyle(.bordered)
+struct SMBorderedButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.subheadline, design: .default).weight(.semibold))
             .foregroundStyle(SMTheme.ink)
-            .tint(SMTheme.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(configuration.isPressed ? SMTheme.border.opacity(0.85) : SMTheme.surface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(SMTheme.border, lineWidth: 1)
+            )
+            .opacity(configuration.isPressed ? 0.92 : 1)
+    }
+}
+
+struct SMProminentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.subheadline, design: .default).weight(.semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(configuration.isPressed ? SMTheme.accent.opacity(0.85) : SMTheme.accent)
+            )
+            .opacity(configuration.isPressed ? 0.92 : 1)
+    }
+}
+
+extension View {
+    /// Readable secondary control on light graphite (avoids washed-out `.bordered`).
+    func smBorderedButton() -> some View {
+        buttonStyle(SMBorderedButtonStyle())
     }
 
+    /// Solid emerald CTA (avoids white-on-white `.borderedProminent` on light chrome).
     func smProminentButton() -> some View {
-        buttonStyle(.borderedProminent)
-            .tint(SMTheme.accent)
-            .foregroundStyle(Color.white)
+        buttonStyle(SMProminentButtonStyle())
     }
 }

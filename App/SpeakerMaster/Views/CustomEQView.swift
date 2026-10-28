@@ -30,17 +30,13 @@ struct CustomEQView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: SMTheme.spaceSM) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Custom")
-                    .font(SMTheme.titleFont)
-                    .foregroundStyle(SMTheme.ink)
-                Text("Pro console · same engine as Auto · safety caps enforced")
-                    .font(SMTheme.captionFont)
-                    .foregroundStyle(SMTheme.muted)
-            }
-            Spacer(minLength: 0)
-            BypassButton()
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Custom")
+                .font(SMTheme.titleFont)
+                .foregroundStyle(SMTheme.ink)
+            Text("Pro console · same engine as Auto · safety caps enforced")
+                .font(SMTheme.captionFont)
+                .foregroundStyle(SMTheme.muted)
         }
     }
 
@@ -239,20 +235,26 @@ struct CustomEQView: View {
                 .font(SMTheme.monoCaption)
                 .foregroundStyle(SMTheme.muted)
 
-            Slider(value: Binding(
-                get: { band.wrappedValue.gainDb },
-                set: { newValue in
-                    band.wrappedValue.gainDb = SafetyLimits.clampBandGain(
-                        newValue,
-                        frequencyHz: band.wrappedValue.frequencyHz
-                    )
-                    preview()
+            ZStack {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(SMTheme.border.opacity(0.55))
+                    .frame(width: 10, height: 140)
+                Slider(value: Binding(
+                    get: { band.wrappedValue.gainDb },
+                    set: { newValue in
+                        band.wrappedValue.gainDb = SafetyLimits.clampBandGain(
+                            newValue,
+                            frequencyHz: band.wrappedValue.frequencyHz
+                        )
+                        preview()
+                    }
+                ), in: -18...maxBoost, step: 0.5) { editing in
+                    if !editing { commit() }
                 }
-            ), in: -18...maxBoost, step: 0.5) { editing in
-                if !editing { commit() }
+                .tint(SMTheme.accent)
+                .frame(width: 28, height: 140)
+                .rotationEffect(.degrees(-90))
             }
-            .frame(width: 28, height: 140)
-            .rotationEffect(.degrees(-90))
             .frame(width: 56, height: 150)
 
             if showAdvanced {
