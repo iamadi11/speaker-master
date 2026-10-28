@@ -1,0 +1,30 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Fundamentals",
+      "description": "Essential patterns every macOS developer needs.",
+      "skills": [
+        "macos-patterns",
+        "macos-build"
+      ]
+    },
+    {
+      "title": "UI Components",
+      "description": "Drop-in UI patterns with reference code.",
+      "skills": [
+        "macos-settings-ui",
+        "macos-notch-ui"
+      ]
+    },
+    {
+      "title": "Distribution",
+      "description": "Ship updates to your users.",
+      "skills": [
+        "macos-auto-update",
+        "macos-release"
+      ]
+    }
+  ]
+}

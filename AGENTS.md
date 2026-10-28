@@ -36,7 +36,11 @@ MacBook-only **system-wide** speaker EQ. Personal use. Free Apple ID / local sig
 
 1. Read this file + `docs/product-brief.md` + `GLOSSARY.md` before changing product behavior.
 2. Prefer Matt Pocock skills for process (`grill-me`, `tdd`, `code-review`, `implement`, …). See `.agents/skills/matt-pocock-swift-adapter/` for Swift applicability.
-3. UI/UX work → `ui-ux-pro-max` (SwiftUI / desktop, not web defaults).
+3. UI/UX / macOS chrome work — load **all** of:
+   - `ui-ux-pro-max` (SwiftUI / desktop, not web defaults)
+   - `macos-design` (native layout, vibrancy, top bar, spacing)
+   - `macos-patterns` (MenuBarExtra, panels, shortcuts, activation)
+   - `apple-design` (HIG review; load `references/hig/designing-for-macos.md` + toolbars/materials/typography/color as needed)
 4. Autonomous find→fix→verify→merge→install → **only** via `autonomous-gap-fix` skill and its safety gates.
 5. Small vertical slices. No speculative DSP until safety sheet + listening gates allow.
 6. Never force-push `main`. Never merge without green verification. Never install without verify.
@@ -46,11 +50,16 @@ MacBook-only **system-wide** speaker EQ. Personal use. Free Apple ID / local sig
 | Skill | Path | When |
 |---|---|---|
 | ui-ux-pro-max | `.agents/skills/ui-ux-pro-max` | Design / SwiftUI / a11y |
+| macos-design | `.agents/skills/macos-design` | Native macOS layout, visual design, interactions |
+| macos-patterns | `.agents/skills/macos-patterns` | Native AppKit/SwiftUI patterns (menu bar, panels, shortcuts) |
+| settings-ui | `.agents/skills/settings-ui` | Preferences / Settings window (Liquid Glass-aware) |
+| apple-design | `.agents/skills/apple-design` | HIG audit / design review (`/apple-design`) |
+| macos-build / release / auto-update / notch-ui | `.agents/skills/{macos-build,release,auto-update,notch-ui}` | macOS ship tooling (use when relevant; `macos-build` = upstream `build`) |
 | Matt Pocock set | `.agents/skills/*` (grill-me, tdd, …) | Engineering rigor |
 | Swift adapter | `.agents/skills/matt-pocock-swift-adapter` | Map TS patterns → Swift |
 | Autonomous gap-fix | `.agents/skills/autonomous-gap-fix` | Investigate → fix → verify → merge → install |
 
-Trigger docs: `docs/agent-workflow.md`.
+Attribution + licenses: `docs/skills-attribution.md`. Trigger docs: `docs/agent-workflow.md`.
 
 ## Verification baseline
 
