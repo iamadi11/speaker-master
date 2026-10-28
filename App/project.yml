@@ -39,6 +39,9 @@ targets:
         DEVELOPMENT_TEAM: ""
     entitlements:
       path: SpeakerMaster/SpeakerMaster.entitlements
+      properties:
+        # Omit app-sandbox (must stay off for process taps). Mic for Measure.
+        com.apple.security.device.audio-input: true
     dependencies:
       - package: SpeakerMasterPackage
         product: SpeakerMaster

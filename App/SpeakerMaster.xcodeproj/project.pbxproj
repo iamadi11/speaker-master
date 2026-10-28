@@ -42,7 +42,6 @@
 		5D24C3EF74B45537FBFDA579 /* NarrowFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrowFlowView.swift; sourceTree = "<group>"; };
 		66124633D6A54BF0494ADD15 /* SystemHostStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHostStatusView.swift; sourceTree = "<group>"; };
 		6C4CB2008E8F3963A503F864 /* CustomEQView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEQView.swift; sourceTree = "<group>"; };
-		7109CFAB1B0F9B5DF6D477C9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		92AB0654ABA3B94AC638A741 /* ProcessTapCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapCapture.swift; sourceTree = "<group>"; };
 		A09F2BC87B2968B95F0981A3 /* SpeakerMasterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerMasterApp.swift; sourceTree = "<group>"; };
 		A0E13129AE89EF6292171193 /* ProcessTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapEngine.swift; sourceTree = "<group>"; };
@@ -96,7 +95,6 @@
 				4F182C242D7C8414699CA6AB /* Audio */,
 				93CC60724DE52BBC02AD2290 /* Views */,
 				40FB0DF60B384D7EC51F6734 /* AppModel.swift */,
-				7109CFAB1B0F9B5DF6D477C9 /* Info.plist */,
 				FF05EA50AD0DF7D716D27E42 /* SpeakerMaster.entitlements */,
 				A09F2BC87B2968B95F0981A3 /* SpeakerMasterApp.swift */,
 				2A2B9FD9BC985D9656043CCA /* Theme.swift */,
@@ -364,12 +362,8 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SpeakerMaster/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Speaker Master";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Speaker Master may open System Settings so you can grant Screen and System Audio Recording.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -395,12 +389,8 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SpeakerMaster/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Speaker Master";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Speaker Master may open System Settings so you can grant Screen and System Audio Recording.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
