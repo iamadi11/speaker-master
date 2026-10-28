@@ -32,6 +32,9 @@ final class AppModel: ObservableObject {
     @Published var lastNarrowPresetID: String?
     @Published var measureNote: String?
     @Published var headphoneWarning = false
+    @Published var customCanUndo = false
+    /// Curve Custom “Reset to Auto” restores (last Auto apply, else flat).
+    @Published private(set) var customAutoBase: EQCurve = .flat
 
     let output = OutputDeviceMonitor()
     let player = InAppEQPlayer()
@@ -40,6 +43,7 @@ final class AppModel: ObservableObject {
     let profiles: SpeakerProfileStore
 
     private let persistence = NarrowPersistencePolicy()
+    private var customStack = CustomEditStack(base: .flat)
     private var cancellables = Set<AnyCancellable>()
 
     init(profiles: SpeakerProfileStore = UserDefaultsProfileStore()) {
@@ -62,6 +66,24 @@ final class AppModel: ObservableObject {
 
     var outputIdentity: SpeakerIdentity { output.identity }
 
+    var customBasedOnLabel: String {
+        switch lastSource {
+        case .measure:
+            return "Based on: Measure · \(outputIdentity.displayName)"
+        case .narrow:
+            let name = lastNarrowPresetID.flatMap { NarrowCatalog.preset(id: $0)?.title } ?? "Narrow"
+            return "Based on: Narrow · \(name)"
+        case .custom:
+            return "Based on: Custom edits · \(outputIdentity.displayName)"
+        case .none:
+            return "Based on: Safe default · \(outputIdentity.displayName)"
+        }
+    }
+
+    var matchedCustomIntentID: String? {
+        CustomIntentCatalog.matchingIntentID(for: activeCurve)
+    }
+
     func restoreIfPossible() {
         output.refresh()
         systemHost.setOutputUID(output.identity.outputUID)
@@ -76,6 +98,7 @@ final class AppModel: ObservableObject {
             autoScreen = .pathPicker
             activeCurve = .flat
             lastSource = nil
+            resetCustomStack(base: .flat)
         }
     }
 
@@ -164,27 +187,41 @@ final class AppModel: ObservableObject {
         autoScreen = .pathPicker
         statusMessage = "Retry — pick Measure or Narrow"
         measureNote = nil
+        resetCustomStack(base: .flat)
         pushCurveToHosts()
         player.stop()
         systemHost.deactivate()
     }
 
+    func applyCustomIntent(_ intent: CustomIntent) {
+        commitCustom(intent.curve, status: "Custom · \(intent.title)")
+    }
+
     func updateCustom(_ curve: EQCurve) {
-        activeCurve = curve.sanitized()
-        lastSource = .custom
-        let profile = SpeakerProfile(
-            identity: output.identity,
-            source: .custom,
-            curve: activeCurve
-        )
-        profiles.save(profile)
+        commitCustom(curve, status: "Custom · Editing")
+    }
+
+    func undoCustom() {
+        guard let previous = customStack.undo() else { return }
+        activeCurve = previous
+        customCanUndo = customStack.canUndo
+        persistCustomCurve(previous)
         pushCurveToHosts()
-        statusMessage = "Custom · Editing"
+        statusMessage = "Custom · Undo"
     }
 
     func resetCustom() {
-        updateCustom(.flat)
-        statusMessage = "Custom · Reset to flat"
+        commitCustom(.flat, status: "Custom · Reset to flat")
+    }
+
+    func resetCustomToAuto() {
+        let target = customAutoBase.sanitized()
+        customStack = CustomEditStack(base: target)
+        activeCurve = target
+        customCanUndo = false
+        persistCustomCurve(target)
+        pushCurveToHosts()
+        statusMessage = "Custom · Reset to Auto"
     }
 
     func setBypass(_ on: Bool) {
@@ -213,11 +250,45 @@ final class AppModel: ObservableObject {
         lastSource = safe.source
         lastNarrowPresetID = safe.narrowPresetID
         bypassed = false
+        if safe.source == .measure || safe.source == .narrow {
+            resetCustomStack(base: safe.curve)
+        } else if safe.source == .custom {
+            customStack = CustomEditStack(base: customAutoBase)
+            customStack.commit(safe.curve)
+            customCanUndo = customStack.canUndo
+            activeCurve = customStack.current
+        }
         if persist {
             profiles.save(safe)
         }
         pushCurveToHosts()
         systemHost.activate(curve: safe.curve)
+    }
+
+    private func commitCustom(_ curve: EQCurve, status: String) {
+        customStack.commit(curve)
+        activeCurve = customStack.current
+        customCanUndo = customStack.canUndo
+        lastSource = .custom
+        persistCustomCurve(activeCurve)
+        pushCurveToHosts()
+        statusMessage = status
+    }
+
+    private func persistCustomCurve(_ curve: EQCurve) {
+        let profile = SpeakerProfile(
+            identity: output.identity,
+            source: .custom,
+            curve: curve
+        )
+        profiles.save(profile)
+    }
+
+    private func resetCustomStack(base: EQCurve) {
+        let safe = base.sanitized()
+        customAutoBase = safe
+        customStack = CustomEditStack(base: safe)
+        customCanUndo = false
     }
 
     private func pushCurveToHosts() {

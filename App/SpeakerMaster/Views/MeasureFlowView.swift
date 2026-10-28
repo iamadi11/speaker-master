@@ -210,25 +210,57 @@ struct MeasureFlowView: View {
     private func emptyMicState(permission: AVAuthorizationStatus) -> some View {
         switch permission {
         case .denied, .restricted:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Grant Microphone in System Settings")
+            VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
+                Label("Microphone permission needed", systemImage: "mic.slash.fill")
+                    .font(SMTheme.captionFont.weight(.semibold))
                     .foregroundStyle(SMTheme.danger)
                     .accessibilityLabel("Grant Microphone in System Settings")
-                Text("Speaker Master is listed under Privacy & Security → Microphone. Turn it on, then Refresh.")
+                Text("Measure cannot list a usable input until Speaker Master is allowed under Privacy & Security → Microphone. Turn it on, return here, then Refresh — or use Narrow without a mic.")
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
-                Button("Open Microphone settings") {
-                    openMicrophoneSettings()
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: SMTheme.spaceSM) {
+                    Button("Open Microphone settings") {
+                        openMicrophoneSettings()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(SMTheme.accent)
+                    .frame(minHeight: 36)
+                    Button("Use Narrow instead") {
+                        model.autoScreen = .narrow
+                    }
+                    .buttonStyle(.bordered)
+                    .frame(minHeight: 36)
+                }
+            }
+            .padding(SMTheme.spaceSM)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SMTheme.danger.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        case .notDetermined:
+            VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
+                Text("Waiting for Microphone access")
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(SMTheme.ink)
+                Text("Allow Microphone when prompted. The list then fills with Built-in and other inputs.")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
+            }
+        default:
+            VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
+                Label("No microphones found", systemImage: "mic.slash")
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(SMTheme.danger)
+                Text("Plug in a mic or enable Built-in, then Refresh. Prefer Narrow if you only need a fast preset.")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
+                Button("Use Narrow instead") {
+                    model.autoScreen = .narrow
                 }
                 .buttonStyle(.bordered)
+                .frame(minHeight: 36)
             }
-        case .notDetermined:
-            Text("Allow Microphone when prompted, then this list fills with Built-in and other inputs.")
-                .foregroundStyle(SMTheme.muted)
-        default:
-            Text("No input devices found. Plug in a mic or enable Built-in, then Refresh — or use Narrow.")
-                .foregroundStyle(SMTheme.danger)
-                .accessibilityLabel("No microphones found")
+            .accessibilityLabel("No microphones found")
         }
     }
 
