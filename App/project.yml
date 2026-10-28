@@ -1,0 +1,46 @@
+name: SpeakerMaster
+options:
+  bundleIdPrefix: com.iamadi11
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+packages:
+  SpeakerMasterPackage:
+    path: ..
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+targets:
+  SpeakerMasterApp:
+    type: application
+    platform: macOS
+    sources:
+      - path: SpeakerMaster
+        excludes:
+          - README.md
+    settings:
+      base:
+        PRODUCT_NAME: SpeakerMaster
+        PRODUCT_MODULE_NAME: SpeakerMasterApp
+        PRODUCT_BUNDLE_IDENTIFIER: com.iamadi11.SpeakerMaster
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Speaker Master
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Speaker Master briefly records through the mic you select so Measure can improve this speaker. Captures stay on this Mac and are deleted after analysis.
+        INFOPLIST_KEY_NSAudioCaptureUsageDescription: Speaker Master processes system audio so Auto and Custom EQ can apply to what this Mac is playing.
+        CODE_SIGN_ENTITLEMENTS: SpeakerMaster/SpeakerMaster.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+    entitlements:
+      path: SpeakerMaster/SpeakerMaster.entitlements
+    dependencies:
+      - package: SpeakerMasterPackage
+        product: SpeakerMaster
+    scheme:
+      testTargets: []
+
