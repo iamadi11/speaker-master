@@ -2,7 +2,7 @@
 
 MacBook **system-wide** speaker EQ — **Auto** (Measure | Narrow) + pro **Custom** console.
 
-Personal use. Swift / Core Audio **process tap + private aggregate**. Free Apple ID / ad-hoc signing.
+Personal use. Swift / Core Audio **process tap + private aggregate**. Free Apple ID / **Apple Development (Personal Team)** signing when available (ad-hoc only as CI fallback).
 
 ## Launch on this Mac
 
@@ -11,6 +11,8 @@ Personal use. Swift / Core Audio **process tap + private aggregate**. Free Apple
 swift test --package-path .
 ./Scripts/install-personal.sh
 ```
+
+`Scripts/resolve-signing.sh` prefers a stable **Apple Development** identity so Microphone / Screen Recording TCC grants stick across rebuilds. Override team with `SPEAKER_MASTER_DEVELOPMENT_TEAM=<TeamID>`. Force ad-hoc (resets TCC every install): `SPEAKER_MASTER_FORCE_ADHOC=1`.
 
 Built app path (after build):
 
@@ -34,12 +36,14 @@ cd App && xcodegen generate && open SpeakerMaster.xcodeproj
 4. **Custom** exposes five bands + broadband within `docs/safety-limits.md`.
 5. Details: [`docs/system-wide-audio.md`](./docs/system-wide-audio.md).
 
-### Grant permissions
+### Grant permissions (once)
 
 | Need | Path |
 |---|---|
 | System-wide EQ | System Settings → Privacy & Security → **Screen & System Audio Recording** → Speaker Master |
 | Measure mic | System Settings → Privacy & Security → **Microphone** → Speaker Master |
+
+Grant once while signed with the same Personal Team + bundle id (`com.iamadi11.SpeakerMaster`). Re-prompts after every install mean the build fell back to **ad-hoc** (empty Team ID) or the Team ID changed — remove stale Speaker Master rows, reinstall with Apple Development, grant once more.
 
 Then **Retry system EQ** in the app if the host still shows permission needed.
 

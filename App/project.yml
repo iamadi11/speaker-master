@@ -36,7 +36,10 @@ targets:
         CODE_SIGN_ENTITLEMENTS: SpeakerMaster/SpeakerMaster.entitlements
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_APP_SANDBOX: NO
-        CODE_SIGN_STYLE: Automatic
+        # Scripts/build-app.sh overrides identity/team at build time.
+        # Prefer Apple Development (Personal Team) locally so TCC grants stick;
+        # CI stays ad-hoc via resolve-signing.sh when no cert is present.
+        CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
     entitlements:

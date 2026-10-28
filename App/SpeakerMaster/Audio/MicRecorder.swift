@@ -8,6 +8,29 @@ struct MicDevice: Identifiable, Hashable {
     var name: String
 }
 
+/// File-scoped so the AVAudioEngine tap never closes over a MainActor type.
+private final class MicSampleBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [Float] = []
+
+    init(capacity: Int) {
+        values.reserveCapacity(capacity)
+    }
+
+    func append(_ chunk: UnsafePointer<Float>, count: Int) {
+        guard count > 0 else { return }
+        lock.lock()
+        values.append(contentsOf: UnsafeBufferPointer(start: chunk, count: count))
+        lock.unlock()
+    }
+
+    func snapshot() -> [Float] {
+        lock.lock()
+        defer { lock.unlock() }
+        return values
+    }
+}
+
 enum MicRecorderError: LocalizedError {
     case noDeviceSelected
     case deviceNotInput(String)
@@ -124,34 +147,12 @@ final class MicRecorder: ObservableObject {
         sampleRate = format.sampleRate > 0 ? format.sampleRate : 48_000
 
         // Shared buffer: audio thread appends; MainActor reads only after tap removed + engine stopped.
-        final class SampleBuffer: @unchecked Sendable {
-            private let lock = NSLock()
-            private var values: [Float] = []
-
-            init(capacity: Int) {
-                values.reserveCapacity(capacity)
-            }
-
-            func append(_ chunk: [Float]) {
-                lock.lock()
-                values.append(contentsOf: chunk)
-                lock.unlock()
-            }
-
-            func snapshot() -> [Float] {
-                lock.lock()
-                defer { lock.unlock() }
-                return values
-            }
-        }
-
-        let buffer = SampleBuffer(capacity: Int(sampleRate * duration) + 4096)
+        // Capture only `buffer` — never `self` — so the tap stays off the MainActor.
+        let buffer = MicSampleBuffer(capacity: Int(sampleRate * duration) + 4096)
 
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buf, _ in
             guard let channel = buf.floatChannelData?[0] else { return }
-            let count = Int(buf.frameLength)
-            let chunk = Array(UnsafeBufferPointer(start: channel, count: count))
-            buffer.append(chunk)
+            buffer.append(channel, count: Int(buf.frameLength))
         }
         tapInstalled = true
 
