@@ -12,7 +12,7 @@ MacBook-only **system-wide** speaker EQ for personal use.
 ## Architecture intent
 
 - Swift / Core Audio **process taps** (macOS 14.2+; target machine 26.5.1+)
-- Soft limiter + boost caps (see future safety sheet)
+- Soft limiter + boost caps (see `docs/safety-limits.md`)
 - No BlackHole / GPL virtual-device embed
 - Free Apple ID personal signing; no paid Developer Program dependency
 
