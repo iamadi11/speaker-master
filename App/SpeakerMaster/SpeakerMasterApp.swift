@@ -35,8 +35,27 @@ struct SpeakerMasterApp: App {
                 }
         }
         .defaultSize(width: 840, height: 600)
+        .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {}
+            CommandMenu("EQ") {
+                Button(model.bypassed ? "Disable Bypass" : "Bypass") {
+                    model.setBypass(!model.bypassed)
+                }
+                .keyboardShortcut("b", modifiers: [.command])
+
+                Button(model.player.isPlaying ? "Stop Audition" : "Play Audition") {
+                    model.toggleAudition()
+                }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("Auto Mode") { model.tab = .auto }
+                    .keyboardShortcut("1", modifiers: [.command])
+                Button("Custom Mode") { model.tab = .custom }
+                    .keyboardShortcut("2", modifiers: [.command])
+            }
         }
 
         MenuBarExtra("Speaker Master", systemImage: "slider.horizontal.3") {

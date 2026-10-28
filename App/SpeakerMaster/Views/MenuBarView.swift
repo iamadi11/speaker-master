@@ -1,26 +1,35 @@
 import AppKit
 import SwiftUI
 
+/// Menu bar extra — macos-patterns: keep compact, actionable, no web chrome.
 struct MenuBarView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
             Text(model.outputIdentity.displayName)
-                .font(.headline)
+                .font(SMTheme.headlineFont)
+                .foregroundStyle(SMTheme.ink)
+                .lineLimit(1)
             Text(model.statusMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(SMTheme.captionFont)
+                .foregroundStyle(SMTheme.muted)
+                .lineLimit(2)
             Text(menuSystemLine)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.system(.caption2))
+                .foregroundStyle(SMTheme.tertiary)
+
             Divider()
+
             Button(model.bypassed ? "Disable Bypass" : "Bypass (hear before)") {
                 model.setBypass(!model.bypassed)
             }
+            .keyboardShortcut("b")
+
             Button(model.player.isPlaying ? "Stop Audition" : "Play Audition") {
                 model.toggleAudition()
             }
+
             if model.systemHost.status == .readyPendingPermission {
                 Button("Open Privacy Settings") {
                     model.systemHost.openPrivacySettings()
@@ -29,12 +38,24 @@ struct MenuBarView: View {
                     model.systemHost.retrySystemWide()
                 }
             }
+
             Divider()
+
+            Button("Show Speaker Master") {
+                NSApp.activate(ignoringOtherApps: true)
+                for window in NSApp.windows where window.canBecomeMain {
+                    window.makeKeyAndOrderFront(nil)
+                    break
+                }
+            }
+
             Button("Quit Speaker Master") {
                 NSApplication.shared.terminate(nil)
             }
+            .keyboardShortcut("q")
         }
-        .padding(4)
+        .padding(SMTheme.spaceSM)
+        .frame(minWidth: 240)
     }
 
     private var menuSystemLine: String {

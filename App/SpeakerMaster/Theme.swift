@@ -1,83 +1,101 @@
+import AppKit
 import SwiftUI
 
-/// Navy + emerald utility chrome (ui-ux-pro-max design-system for pro audio console).
-/// Explicitly rejects purple-on-white, OLED-default black, Inter/Roboto stacks.
+/// Modern-minimal macOS chrome (macos-design + apple-design HIG).
+/// Hierarchy via background levels, not heavy borders. Accent is sparse highlight only.
 enum SMTheme {
-    static let background = Color(red: 0.973, green: 0.980, blue: 0.988) // #F8FAFC
-    static let surface = Color.white
-    static let ink = Color(red: 0.118, green: 0.227, blue: 0.373) // #1E3A5F navy
-    static let muted = Color(red: 0.278, green: 0.333, blue: 0.412) // #475569
-    static let border = Color(red: 0.894, green: 0.906, blue: 0.922) // #E4E7EB
-    static let accent = Color(red: 0.020, green: 0.588, blue: 0.412) // #059669 emerald
-    static let accentSoft = Color(red: 0.020, green: 0.588, blue: 0.412).opacity(0.12)
-    static let danger = Color(red: 0.863, green: 0.149, blue: 0.149) // #DC2626
-    static let bypass = Color(red: 0.720, green: 0.420, blue: 0.090)
-    static let warning = Color(red: 0.710, green: 0.400, blue: 0.090)
+    // MARK: - Color (light + dark designed independently)
 
-    /// Dense console spacing (design dial density 8).
-    static let spaceXS: CGFloat = 6
-    static let spaceSM: CGFloat = 10
-    static let spaceMD: CGFloat = 14
-    static let spaceLG: CGFloat = 20
+    static let background = Color(nsColor: .windowBackgroundColor)
+    static let surface = Color(nsColor: .controlBackgroundColor)
+    static let ink = Color(nsColor: .labelColor)
+    static let muted = Color(nsColor: .secondaryLabelColor)
+    static let tertiary = Color(nsColor: .tertiaryLabelColor)
+    static let border = Color(nsColor: .separatorColor)
 
-    static let titleFont = Font.system(size: 26, weight: .bold, design: .default)
-    static let headlineFont = Font.system(size: 17, weight: .semibold, design: .default)
+    /// Quiet accent — emerald, used for primary CTA / selected outline only (never large fills).
+    static let accent = Color(light: Color(red: 0.05, green: 0.52, blue: 0.40),
+                              dark: Color(red: 0.30, green: 0.78, blue: 0.55))
+    static let accentSoft = accent.opacity(0.10)
+
+    static let danger = Color(light: Color(red: 0.86, green: 0.15, blue: 0.15),
+                              dark: Color(red: 1.0, green: 0.27, blue: 0.23))
+    static let bypass = Color(light: Color(red: 0.70, green: 0.42, blue: 0.10),
+                              dark: Color(red: 1.0, green: 0.62, blue: 0.04))
+    static let warning = Color(light: Color(red: 0.70, green: 0.42, blue: 0.10),
+                               dark: Color(red: 1.0, green: 0.62, blue: 0.04))
+
+    // MARK: - Spacing (8pt) + radii (macos-design)
+
+    static let spaceXS: CGFloat = 4
+    static let spaceSM: CGFloat = 8
+    static let spaceMD: CGFloat = 12
+    static let spaceLG: CGFloat = 16
+    static let spaceXL: CGFloat = 24
+    static let spaceXXL: CGFloat = 32
+
+    static let radiusControl: CGFloat = 6
+    static let radiusCard: CGFloat = 8
+    static let radiusPanel: CGFloat = 10
+
+    /// macOS body is ~13pt; prefer semantic system text styles.
+    static let titleFont = Font.system(.title2, design: .default).weight(.semibold)
+    static let headlineFont = Font.system(.headline, design: .default)
     static let bodyFont = Font.system(.body, design: .default)
     static let captionFont = Font.system(.caption, design: .default)
     static let monoCaption = Font.system(.caption, design: .monospaced)
 
-    static func panelBackground() -> some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(surface)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(border, lineWidth: 1)
-            )
+    static let minTouch: CGFloat = 28
+}
+
+private extension Color {
+    init(light: Color, dark: Color) {
+        self.init(nsColor: NSColor(name: nil, dynamicProvider: { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return NSColor(isDark ? dark : light)
+        }))
     }
 }
+
+// MARK: - Buttons (readable solids; quiet corners)
 
 struct SMBorderedButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.subheadline, design: .default).weight(.semibold))
+            .font(.system(.callout, design: .default).weight(.medium))
             .foregroundStyle(SMTheme.ink)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 5)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(configuration.isPressed ? SMTheme.border.opacity(0.85) : SMTheme.surface)
+                RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous)
+                    .fill(configuration.isPressed
+                          ? SMTheme.border.opacity(0.45)
+                          : Color(nsColor: .controlBackgroundColor))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(SMTheme.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous)
+                    .strokeBorder(SMTheme.border.opacity(0.65), lineWidth: 0.5)
             )
-            .opacity(configuration.isPressed ? 0.92 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
     }
 }
 
 struct SMProminentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.subheadline, design: .default).weight(.semibold))
+            .font(.system(.callout, design: .default).weight(.semibold))
             .foregroundStyle(Color.white)
             .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.vertical, 5)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(configuration.isPressed ? SMTheme.accent.opacity(0.85) : SMTheme.accent)
+                RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous)
+                    .fill(configuration.isPressed ? SMTheme.accent.opacity(0.82) : SMTheme.accent)
             )
             .opacity(configuration.isPressed ? 0.92 : 1)
     }
 }
 
 extension View {
-    /// Readable secondary control on light graphite (avoids washed-out `.bordered`).
-    func smBorderedButton() -> some View {
-        buttonStyle(SMBorderedButtonStyle())
-    }
-
-    /// Solid emerald CTA (avoids white-on-white `.borderedProminent` on light chrome).
-    func smProminentButton() -> some View {
-        buttonStyle(SMProminentButtonStyle())
-    }
+    func smBorderedButton() -> some View { buttonStyle(SMBorderedButtonStyle()) }
+    func smProminentButton() -> some View { buttonStyle(SMProminentButtonStyle()) }
 }

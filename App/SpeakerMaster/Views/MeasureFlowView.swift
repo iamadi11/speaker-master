@@ -16,7 +16,7 @@ struct MeasureFlowView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: SMTheme.spaceLG) {
                 Button {
                     model.autoScreen = .pathPicker
                 } label: {
@@ -60,12 +60,12 @@ struct MeasureFlowView: View {
                             .foregroundStyle(SMTheme.muted)
                     }
                 }
-                .padding(14)
+                .padding(SMTheme.spaceMD)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(SMTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous)
                         .strokeBorder(micReady ? SMTheme.accent.opacity(0.45) : SMTheme.border, lineWidth: 1)
                 )
 
@@ -88,7 +88,7 @@ struct MeasureFlowView: View {
                         .accessibilityLabel("Measure result: \(note)")
                 }
 
-                HStack(spacing: 12) {
+                HStack(spacing: SMTheme.spaceMD) {
                     Button {
                         Task {
                             running = true

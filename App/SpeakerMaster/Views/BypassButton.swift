@@ -31,7 +31,7 @@ struct BypassButton: View {
                             }
                     )
                     .accessibilityHint("Hold to hear before EQ; release to hear processed")
-                    .help("Hold to A/B: pressed = before EQ")
+                    .help("Hold to A/B: pressed = before EQ (⌘B toggles)")
             }
         }
         .accessibilityLabel(model.bypassed ? "Bypass on, hearing before" : "Bypass off")
@@ -40,17 +40,19 @@ struct BypassButton: View {
 
     private var label: some View {
         Text(model.bypassed ? "Bypassed" : "Bypass")
-            .font(.system(.subheadline, design: .rounded).weight(.semibold))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .frame(minHeight: 36)
+            .font(.system(.subheadline, design: .default).weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .frame(minHeight: SMTheme.minTouch)
             .foregroundStyle(model.bypassed ? Color.white : SMTheme.ink)
-            .background(model.bypassed ? SMTheme.bypass : SMTheme.border.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(SMTheme.bypass.opacity(model.bypassed ? 0 : 0.5), lineWidth: 1)
+            .background(
+                model.bypassed ? SMTheme.bypass : Color(nsColor: .controlBackgroundColor),
+                in: RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous)
+                    .strokeBorder(SMTheme.bypass.opacity(model.bypassed ? 0 : 0.45), lineWidth: 0.5)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous))
     }
 }
