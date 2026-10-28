@@ -1,0 +1,14 @@
+---
+description: Speaker Master product lock and non-goals
+alwaysApply: true
+---
+
+# Product lock
+
+- MacBook-only system-wide EQ. No iPhone, no sync product, no PWA.
+- Auto = Measure (mic, user-selectable) OR Narrow (persist per speaker until Retry).
+- Custom = pro console with easy progressive disclosure.
+- Core Audio process taps; no BlackHole GPL embed.
+- Personal use; free signing only — no $99 assumptions.
+- World-class bar; no me-too EQ fluff in copy.
+- Full conventions: `AGENTS.md`. Autonomous ship: `autonomous-gap-fix` skill only.
