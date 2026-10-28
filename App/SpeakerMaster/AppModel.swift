@@ -104,7 +104,7 @@ final class AppModel: ObservableObject {
         {
             apply(profile: profile, persist: false)
             autoScreen = .home
-            statusMessage = "On for this speaker · Saved until Retry"
+            statusMessage = "On for this speaker · Stays until Retry or a different speaker"
         } else {
             autoScreen = .pathPicker
             activeCurve = .flat
@@ -127,7 +127,7 @@ final class AppModel: ObservableObject {
         )
         apply(profile: profile, persist: true)
         autoScreen = .home
-        statusMessage = "Narrow · \(preset.title) · Saved for this speaker"
+        statusMessage = "Narrow · \(preset.title) · Stays until Retry or a different speaker"
         measureNote = preset.summary
     }
 
@@ -190,8 +190,8 @@ final class AppModel: ObservableObject {
                 autoScreen = .home
                 measurePhase = .applied
                 statusMessage = result.quality == .good
-                    ? "Measure · Better sound is on"
-                    : "Measure · Applied (cautious)"
+                    ? "Measure · Better sound is on · Stays until Retry"
+                    : "Measure · Applied (cautious) · Stays until Retry"
                 let bands = MeasureAnalyzer.bandCorrectionSummary(from: result)
                 measureNote = bands.isEmpty ? notes : "\(notes)\nBands: \(bands)"
             case .refuse(let notes):
