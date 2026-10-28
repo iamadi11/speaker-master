@@ -8,6 +8,12 @@ struct MeasureFlowView: View {
     @State private var running = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var micReady: Bool {
+        model.mic.isAuthorizedForCapture
+            && model.mic.selectedDeviceID != nil
+            && !model.mic.devices.isEmpty
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -60,7 +66,7 @@ struct MeasureFlowView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(SMTheme.border, lineWidth: 1)
+                        .strokeBorder(micReady ? SMTheme.accent.opacity(0.45) : SMTheme.border, lineWidth: 1)
                 )
 
                 Label(
@@ -71,14 +77,14 @@ struct MeasureFlowView: View {
                 .foregroundStyle(SMTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
 
-                if let note = model.measureNote {
+                if model.measurePhase == .refused || model.measurePhase == .applied,
+                   let note = model.measureNote
+                {
+                    resultCard(note: note)
+                } else if let note = model.measureNote {
                     Text(note)
                         .font(SMTheme.captionFont)
-                        .foregroundStyle(
-                            model.statusMessage.hasPrefix("Bad") || model.statusMessage.hasPrefix("Measure failed")
-                                ? SMTheme.danger
-                                : SMTheme.muted
-                        )
+                        .foregroundStyle(SMTheme.muted)
                         .accessibilityLabel("Measure result: \(note)")
                 }
 
@@ -91,10 +97,10 @@ struct MeasureFlowView: View {
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            if running || model.mic.isRecording {
+                            if running || model.measurePhase == .recording || model.measurePhase == .analyzing {
                                 ProgressView()
                                     .controlSize(.small)
-                                Text(model.mic.isRecording ? "Listening…" : "Analyzing…")
+                                Text(phaseButtonLabel)
                             } else {
                                 Image(systemName: "waveform")
                                 Text("Play & measure")
@@ -111,6 +117,7 @@ struct MeasureFlowView: View {
                     )
                     .frame(minHeight: 44)
                     .accessibilityHint("Plays a short sweep, records the selected mic, then applies safe Auto EQ")
+                    .accessibilityValue(phaseButtonLabel)
 
                     Button("Use Narrow instead") {
                         model.autoScreen = .narrow
@@ -119,7 +126,7 @@ struct MeasureFlowView: View {
                     .frame(minHeight: 44)
                 }
 
-                Text("Captures stay in memory and are discarded after analysis. System EQ is bypassed during the sweep so the mic hears the speaker, not a prior curve.")
+                Text("Captures stay in memory and are discarded after analysis. System EQ is bypassed during the sweep so the mic hears the speaker, not a prior curve. Analyzer is a first pass — not a lab calibration.")
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
 
@@ -127,10 +134,69 @@ struct MeasureFlowView: View {
             }
             .padding(28)
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: model.measurePhase)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: running)
         .task {
             _ = await model.mic.requestPermission()
             model.mic.refreshDevices()
+        }
+    }
+
+    private var phaseButtonLabel: String {
+        switch model.measurePhase {
+        case .recording: return "Listening…"
+        case .analyzing: return "Analyzing…"
+        default:
+            if model.mic.isRecording { return "Listening…" }
+            return running ? "Working…" : "Play & measure"
+        }
+    }
+
+    private func resultCard(note: String) -> some View {
+        let refused = model.measurePhase == .refused
+        return VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
+            HStack(spacing: SMTheme.spaceSM) {
+                Text(refused ? "Nothing applied" : qualityTitle)
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(refused ? SMTheme.danger : SMTheme.accent)
+                Spacer(minLength: 0)
+                if !refused, let quality = model.lastMeasureQuality {
+                    Text(quality == .good ? "Good take" : "Cautious")
+                        .font(SMTheme.captionFont.weight(.semibold))
+                        .foregroundStyle(SMTheme.ink)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(SMTheme.accentSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+            }
+            Text(note)
+                .font(SMTheme.captionFont)
+                .foregroundStyle(SMTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            if refused {
+                Text("Prior good profile kept if one existed. Retry after fixing level / noise, or use Narrow.")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
+            }
+        }
+        .padding(SMTheme.spaceSM)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(refused ? SMTheme.danger.opacity(0.06) : SMTheme.accentSoft)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(refused ? SMTheme.danger.opacity(0.35) : SMTheme.accent.opacity(0.35), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(refused ? "Measure refused: \(note)" : "Measure result: \(note)")
+    }
+
+    private var qualityTitle: String {
+        switch model.lastMeasureQuality {
+        case .good: return "Correction applied"
+        case .inconclusive: return "Cautious correction applied"
+        case .badTake, .none: return "Result"
         }
     }
 
@@ -170,8 +236,6 @@ struct MeasureFlowView: View {
         if devices.isEmpty {
             emptyMicState(permission: permission)
         } else {
-            // Explicit radio list — macOS Menu Picker with a mismatched tag rendered blank
-            // (looked like “no mics” even when HAL had devices + TCC was granted).
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(devices) { device in
                     Button {
@@ -274,30 +338,60 @@ struct MeasureFlowView: View {
     }
 
     private var stepRow: some View {
-        HStack(spacing: 8) {
-            stepChip("Mic", active: true)
-            Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(SMTheme.muted)
-                .accessibilityHidden(true)
-            stepChip("Place", active: true)
-            Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(SMTheme.muted)
-                .accessibilityHidden(true)
-            stepChip(running ? "Listening" : "Apply", active: running)
+        let micActive = micReady || model.measurePhase != .idle
+        let placeActive = micReady
+        let applyActive = model.measurePhase == .recording
+            || model.measurePhase == .analyzing
+            || model.measurePhase == .applied
+        let applyTitle: String = {
+            switch model.measurePhase {
+            case .recording: return "Listening"
+            case .analyzing: return "Analyze"
+            case .applied: return "Applied"
+            case .refused: return "Retry"
+            case .idle: return "Apply"
+            }
+        }()
+
+        return HStack(spacing: 8) {
+            stepChip("1 Mic", done: micReady, active: micActive)
+            chevron
+            stepChip("2 Place", done: placeActive && applyActive, active: placeActive)
+            chevron
+            stepChip("3 \(applyTitle)", done: model.measurePhase == .applied, active: applyActive || model.measurePhase == .refused)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Measure steps: microphone, place, then apply")
+        .accessibilityLabel(
+            "Measure steps: microphone\(micReady ? " ready" : ""), place, then \(applyTitle.lowercased())"
+        )
     }
 
-    private func stepChip(_ title: String, active: Bool) -> some View {
-        Text(title)
-            .font(SMTheme.captionFont.weight(.semibold))
-            .foregroundStyle(active ? SMTheme.accent : SMTheme.muted)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(active ? SMTheme.accentSoft : SMTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.caption2)
+            .foregroundStyle(SMTheme.muted)
+            .accessibilityHidden(true)
+    }
+
+    private func stepChip(_ title: String, done: Bool, active: Bool) -> some View {
+        HStack(spacing: 4) {
+            if done {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(SMTheme.accent)
+                    .accessibilityHidden(true)
+            }
+            Text(title)
+                .font(SMTheme.captionFont.weight(.semibold))
+                .foregroundStyle(active || done ? SMTheme.accent : SMTheme.muted)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(active || done ? SMTheme.accentSoft : SMTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(active || done ? SMTheme.accent.opacity(0.4) : SMTheme.border, lineWidth: 1)
+        )
     }
 }
