@@ -23,6 +23,15 @@ final class AppModel: ObservableObject {
         case home
     }
 
+    /// Measure guided-flow phase for step indicators (ui-ux progress feedback).
+    enum MeasurePhase: String, Equatable {
+        case idle
+        case recording
+        case analyzing
+        case applied
+        case refused
+    }
+
     @Published var tab: Tab = .auto
     @Published var autoScreen: AutoScreen = .pathPicker
     @Published var activeCurve: EQCurve = .flat
@@ -31,6 +40,8 @@ final class AppModel: ObservableObject {
     @Published var lastSource: SpeakerProfile.Source?
     @Published var lastNarrowPresetID: String?
     @Published var measureNote: String?
+    @Published var measurePhase: MeasurePhase = .idle
+    @Published var lastMeasureQuality: MeasureAnalysisResult.Quality?
     @Published var headphoneWarning = false
     @Published var customCanUndo = false
     /// Curve Custom “Reset to Auto” restores (last Auto apply, else flat).
@@ -123,16 +134,20 @@ final class AppModel: ObservableObject {
     func runMeasure() async {
         statusMessage = "Measuring…"
         measureNote = nil
+        lastMeasureQuality = nil
+        measurePhase = .idle
         let ok = await mic.requestPermission()
         guard ok else {
             statusMessage = "Mic permission needed — or use Narrow"
             measureNote = "Allow Microphone in System Settings, or pick Narrow."
+            measurePhase = .refused
             return
         }
         mic.refreshDevices()
         guard mic.selectedDeviceID != nil else {
             statusMessage = "No mic selected"
             measureNote = "Pick an input above, or use Narrow."
+            measurePhase = .refused
             return
         }
 
@@ -140,6 +155,7 @@ final class AppModel: ObservableObject {
         // not a previous Narrow/Measure/Custom curve (mic = room measure; tap = host).
         let previousBypass = bypassed
         setBypass(true)
+        measurePhase = .recording
 
         do {
             let capture = try await mic.recordWhilePlaying(
@@ -148,11 +164,13 @@ final class AppModel: ObservableObject {
                 stimulusCurve: .flat
             )
             setBypass(previousBypass)
+            measurePhase = .analyzing
 
             let result = MeasureAnalyzer.analyze(
                 samples: capture.samples,
                 sampleRate: capture.sampleRate
             )
+            lastMeasureQuality = result.quality
             switch MeasurePipeline.decision(from: result) {
             case .apply(let correction, let notes):
                 let profile = SpeakerProfile(
@@ -162,6 +180,7 @@ final class AppModel: ObservableObject {
                 )
                 apply(profile: profile, persist: true)
                 autoScreen = .home
+                measurePhase = .applied
                 statusMessage = result.quality == .good
                     ? "Measure · Better sound is on"
                     : "Measure · Applied (cautious)"
@@ -171,12 +190,15 @@ final class AppModel: ObservableObject {
                 // Do not overwrite a prior good profile with a hot guess.
                 statusMessage = "Bad take — nothing new applied"
                 measureNote = notes
+                measurePhase = .refused
                 autoScreen = .measure
             }
         } catch {
             setBypass(previousBypass)
             statusMessage = "Measure failed"
             measureNote = error.localizedDescription
+            measurePhase = .refused
+            lastMeasureQuality = .badTake
             autoScreen = .measure
         }
     }
@@ -190,6 +212,8 @@ final class AppModel: ObservableObject {
         autoScreen = .pathPicker
         statusMessage = "Retry — pick Measure or Narrow"
         measureNote = nil
+        measurePhase = .idle
+        lastMeasureQuality = nil
         resetCustomStack(base: .flat)
         pushCurveToHosts()
         player.stop()

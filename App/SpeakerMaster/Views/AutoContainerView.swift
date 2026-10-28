@@ -144,6 +144,13 @@ struct AutoHomeView: View {
                         .foregroundStyle(SMTheme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                if model.lastSource == .measure, let quality = model.lastMeasureQuality {
+                    Text(quality == .good
+                          ? "Take quality: good · hold Bypass to A/B"
+                          : "Take quality: cautious · hold Bypass to A/B · retry if unsure")
+                        .font(SMTheme.captionFont.weight(.medium))
+                        .foregroundStyle(SMTheme.ink)
+                }
             }
 
             HStack(spacing: SMTheme.spaceSM) {
@@ -158,6 +165,7 @@ struct AutoHomeView: View {
                 Button("Open Custom") { model.tab = .custom }
                     .smProminentButton()
                     .frame(minHeight: 36)
+                    .accessibilityHint("Refine this Auto result in the Custom console")
             }
 
             SystemHostStatusView()

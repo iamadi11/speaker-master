@@ -152,18 +152,48 @@ struct CustomEQView: View {
     private var magnitudePreview: some View {
         let freqs: [Double] = [60, 120, 250, 500, 1000, 2000, 4000, 8000, 12000]
         let curve = EQCurve(bands: bands, broadbandGainDb: broadband, bypassed: false).sanitized()
-        return HStack(alignment: .bottom, spacing: 3) {
-            ForEach(freqs, id: \.self) { hz in
-                let mag = curve.approximateMagnitudeDb(atFrequencyHz: hz, sampleRate: 48_000)
-                let height = min(36, max(4, 18 + mag * 3))
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(mag >= 0 ? SMTheme.accent.opacity(0.75) : SMTheme.muted.opacity(0.45))
-                    .frame(width: 14, height: height)
-                    .accessibilityHidden(true)
+        let autoBase = model.customAutoBase.sanitized()
+        let showGhost = autoBase != curve
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Shape preview")
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(SMTheme.muted)
+                Spacer(minLength: 0)
+                if showGhost {
+                    Text("Ghost = Auto base")
+                        .font(SMTheme.captionFont)
+                        .foregroundStyle(SMTheme.muted)
+                }
             }
+            HStack(alignment: .bottom, spacing: 3) {
+                ForEach(freqs, id: \.self) { hz in
+                    let mag = curve.approximateMagnitudeDb(atFrequencyHz: hz, sampleRate: 48_000)
+                    let baseMag = autoBase.approximateMagnitudeDb(atFrequencyHz: hz, sampleRate: 48_000)
+                    let height = min(36, max(4, 18 + mag * 3))
+                    let baseHeight = min(36, max(4, 18 + baseMag * 3))
+                    ZStack(alignment: .bottom) {
+                        if showGhost {
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(SMTheme.ink.opacity(0.12))
+                                .frame(width: 14, height: baseHeight)
+                        }
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(mag >= 0 ? SMTheme.accent.opacity(0.75) : SMTheme.muted.opacity(0.45))
+                            .frame(width: 14, height: height)
+                    }
+                    .frame(width: 14, height: 36, alignment: .bottom)
+                    .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityLabel("Approximate EQ shape preview")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            showGhost
+                ? "Approximate EQ shape with Auto base ghost overlay"
+                : "Approximate EQ shape preview"
+        )
     }
 
     private var broadbandRow: some View {
@@ -227,13 +257,20 @@ struct CustomEQView: View {
 
     private func bandColumn(band: Binding<EQBand>) -> some View {
         let maxBoost = SafetyLimits.maxBandBoostDb(frequencyHz: band.wrappedValue.frequencyHz)
+        let atCap = band.wrappedValue.gainDb >= maxBoost - 0.01
         return VStack(spacing: 4) {
             Text(formatHz(band.wrappedValue.frequencyHz))
                 .font(SMTheme.captionFont.weight(.semibold))
                 .foregroundStyle(SMTheme.ink)
             Text(String(format: "%+.1f", band.wrappedValue.gainDb))
                 .font(SMTheme.monoCaption)
-                .foregroundStyle(SMTheme.muted)
+                .foregroundStyle(atCap ? SMTheme.warning : SMTheme.muted)
+            if atCap {
+                Text("cap")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(SMTheme.warning)
+                    .accessibilityLabel("At safety boost ceiling")
+            }
 
             ZStack {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -251,11 +288,16 @@ struct CustomEQView: View {
                 ), in: -18...maxBoost, step: 0.5) { editing in
                     if !editing { commit() }
                 }
-                .tint(SMTheme.accent)
+                .tint(atCap ? SMTheme.warning : SMTheme.accent)
                 .frame(width: 28, height: 140)
                 .rotationEffect(.degrees(-90))
             }
             .frame(width: 56, height: 150)
+            .onTapGesture(count: 2) {
+                band.wrappedValue.gainDb = 0
+                commit()
+            }
+            .help("Double-click to zero this band")
 
             if showAdvanced {
                 Slider(value: Binding(
@@ -291,7 +333,12 @@ struct CustomEQView: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(formatHz(band.wrappedValue.frequencyHz)) band")
+        .accessibilityLabel(
+            atCap
+                ? "\(formatHz(band.wrappedValue.frequencyHz)) band, at safety cap"
+                : "\(formatHz(band.wrappedValue.frequencyHz)) band"
+        )
+        .accessibilityHint("Double-click fader to zero")
     }
 
     private func formatHz(_ hz: Double) -> String {
