@@ -93,4 +93,24 @@ struct MeasureAnalyzerTests {
         #expect(result.quality == .badTake)
         #expect(result.correction == nil)
     }
+
+    @Test("near-clip takes stay cautious — never labeled good")
+    func nearClipIsInconclusive() {
+        let sr = 48_000.0
+        var samples = [Float]()
+        samples.reserveCapacity(16_384)
+        // Single partial at 0.90 — peak stays in [0.85, 0.98) without hard clip.
+        for i in 0..<16_384 {
+            let t = Double(i) / sr
+            samples.append(Float(0.90 * sin(2 * Double.pi * 1000 * t)))
+        }
+        let peak = samples.map { abs($0) }.max() ?? 0
+        #expect(peak >= 0.85 && peak < 0.98)
+        let result = MeasureAnalyzer.analyze(samples: samples, sampleRate: sr)
+        #expect(result.quality != .good)
+        if result.correction != nil {
+            #expect(result.quality == .inconclusive)
+            #expect(result.notes.lowercased().contains("clip") || result.notes.lowercased().contains("cautious"))
+        }
+    }
 }

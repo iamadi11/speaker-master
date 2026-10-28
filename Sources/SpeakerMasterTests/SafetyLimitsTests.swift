@@ -30,4 +30,18 @@ struct SafetyLimitsTests {
         #expect(SafetyLimits.constructiveGainWithinCap(atFrequencyHz: 1000, overlappingBoostsDb: [4, 3]) == false)
         #expect(SafetyLimits.constructiveGainWithinCap(atFrequencyHz: 1000, overlappingBoostsDb: [3, 2]) == true)
     }
+
+    @Test("EQCurve.sanitized is the enforcement seam for total constructive gain")
+    func curveSanitizedIsEnforcementSeam() {
+        let hot = EQCurve(
+            bands: [
+                EQBand(id: "m1", frequencyHz: 1000, gainDb: 6, q: 0.8, type: .peaking),
+                EQBand(id: "m2", frequencyHz: 1500, gainDb: 5, q: 0.8, type: .peaking),
+            ],
+            broadbandGainDb: 3,
+            bypassed: false
+        )
+        let safe = hot.sanitized()
+        #expect(safe.worstConstructiveGainDb(sampleRate: 48_000) <= SafetyLimits.maxTotalConstructiveGainDb + 0.15)
+    }
 }
