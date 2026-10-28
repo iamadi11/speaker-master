@@ -77,7 +77,7 @@ public struct SystemEQEmptyStateCopy: Sendable, Equatable {
         case .failed:
             return SystemEQEmptyStateCopy(
                 title: "System EQ failed",
-                body: "The process tap could not start. In-app audition still works. Retry after checking Privacy settings, or see docs/system-wide-audio.md.",
+                body: "The process tap could not start. In-app audition still works. Retry after checking System Settings → Privacy & Security → Screen & System Audio Recording.",
                 primaryActionTitle: "Retry system EQ",
                 secondaryActionTitle: "Open Privacy Settings"
             )

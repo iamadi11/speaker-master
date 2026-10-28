@@ -20,10 +20,17 @@ struct SystemHostStatusView: View {
     var body: some View {
         let empty = SystemEQEmptyStateCopy.forPhase(model.systemHost.phase)
         // Keep path CTAs primary: inactive/healthy → thin caption; permission/fail → full panel.
-        if compactWhenHealthy && !isAttentionPhase {
-            compactHealthyRow(title: empty?.title ?? statusTitle, detail: empty?.body ?? model.systemHost.detail)
-        } else {
-            fullPanel(empty: empty)
+        Group {
+            if compactWhenHealthy && !isAttentionPhase {
+                compactHealthyRow(title: empty?.title ?? statusTitle, detail: empty?.body ?? model.systemHost.detail)
+            } else {
+                fullPanel(empty: empty)
+            }
+        }
+        .onChange(of: model.systemHost.phase) { _, phase in
+            guard isAttentionPhase else { return }
+            let title = SystemEQEmptyStateCopy.forPhase(phase)?.title ?? statusTitle
+            AccessibilityNotification.Announcement("System EQ: \(title)").post()
         }
     }
 

@@ -27,7 +27,7 @@ struct AutoPathPickerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: SMTheme.spaceXL) {
                 VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
-                    Text("No EQ yet for this speaker")
+                    Text(pathPickerEyebrow)
                         .font(SMTheme.captionFont.weight(.semibold))
                         .foregroundStyle(SMTheme.tertiary)
                         .textCase(.uppercase)
@@ -88,6 +88,12 @@ struct AutoPathPickerView: View {
             .frame(maxWidth: 720, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var pathPickerEyebrow: String {
+        model.statusMessage.hasPrefix("New speaker")
+            ? "New speaker detected"
+            : "No EQ yet for this speaker"
     }
 
     private func pathRow(
@@ -167,22 +173,27 @@ struct AutoHomeView: View {
                 }
             }
 
+            // Trust action is Bypass in the toolbar (⌘B). Keep Retry / Custom equal weight;
+            // Audition stays optional caption-level (ux-journey-pm anti-pattern).
             HStack(spacing: SMTheme.spaceSM) {
                 Button("Retry") { model.retry() }
                     .smBorderedButton()
                     .frame(minHeight: SMTheme.minTouch)
                     .help("Clear this speaker’s Auto result and choose Measure or Narrow again")
-                Button(model.player.isPlaying ? "Stop audition" : "Play audition") {
-                    model.toggleAudition()
-                }
-                .smBorderedButton()
-                .frame(minHeight: SMTheme.minTouch)
-                .help("Optional in-app proof (⇧⌘A)")
                 Button("Open Custom") { model.tab = .custom }
-                    .smProminentButton()
+                    .smBorderedButton()
                     .frame(minHeight: SMTheme.minTouch)
                     .accessibilityHint("Refine this Auto result in Custom — Auto home stays sacred")
             }
+
+            Button(model.player.isPlaying ? "Stop audition" : "Play audition (optional)") {
+                model.toggleAudition()
+            }
+            .buttonStyle(.borderless)
+            .font(SMTheme.captionFont)
+            .foregroundStyle(SMTheme.tertiary)
+            .help("Optional in-app proof (⇧⌘A)")
+            .accessibilityHint("Optional — Bypass in the toolbar is the primary A/B")
 
             SystemHostStatusView(compactWhenHealthy: true)
             Spacer(minLength: 0)

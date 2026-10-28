@@ -18,12 +18,15 @@ struct MeasureFlowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: SMTheme.spaceLG) {
                 Button {
+                    if model.isMeasureRunning || running {
+                        model.cancelMeasure()
+                    }
                     model.autoScreen = .pathPicker
                 } label: {
                     Label("Back", systemImage: "chevron.left")
                 }
                 .buttonStyle(.borderless)
-                .accessibilityHint("Return to Measure or Narrow")
+                .accessibilityHint("Return to Measure or Narrow. Cancels an in-flight sweep first.")
 
                 Text("Measure")
                     .font(SMTheme.titleFont)
@@ -35,7 +38,7 @@ struct MeasureFlowView: View {
 
                 stepRow
 
-                if running || model.measurePhase == .recording || model.measurePhase == .analyzing {
+                if model.isMeasureRunning || running {
                     phaseGuidanceBanner
                 }
 
@@ -44,7 +47,8 @@ struct MeasureFlowView: View {
                         .font(SMTheme.captionFont.weight(.semibold))
                         .foregroundStyle(SMTheme.muted)
 
-                    if !model.mic.isAuthorizedForCapture {
+                    // Avoid double denied banners: empty list owns the denied empty-state.
+                    if !model.mic.isAuthorizedForCapture, !model.mic.devices.isEmpty {
                         permissionBanner
                     }
 
@@ -85,7 +89,7 @@ struct MeasureFlowView: View {
                    let note = model.measureNote
                 {
                     resultCard(note: note)
-                } else if let note = model.measureNote {
+                } else if let note = model.measureNote, !model.isMeasureRunning {
                     Text(note)
                         .font(SMTheme.captionFont)
                         .foregroundStyle(SMTheme.muted)
@@ -93,6 +97,18 @@ struct MeasureFlowView: View {
                 }
 
                 HStack(spacing: SMTheme.spaceMD) {
+                    if model.isMeasureRunning || running {
+                        Button {
+                            model.cancelMeasure()
+                        } label: {
+                            Text("Cancel")
+                                .frame(minWidth: 88)
+                        }
+                        .smBorderedButton()
+                        .frame(minHeight: 44)
+                        .accessibilityHint("Stop the sweep; prior good profile is kept")
+                    }
+
                     Button {
                         Task {
                             running = true
@@ -101,7 +117,7 @@ struct MeasureFlowView: View {
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            if running || model.measurePhase == .recording || model.measurePhase == .analyzing {
+                            if running || model.isMeasureRunning {
                                 ProgressView()
                                     .controlSize(.small)
                                 Text(phaseButtonLabel)
@@ -115,6 +131,7 @@ struct MeasureFlowView: View {
                     .smProminentButton()
                     .disabled(
                         running
+                            || model.isMeasureRunning
                             || model.mic.devices.isEmpty
                             || model.mic.selectedDeviceID == nil
                             || !model.mic.isAuthorizedForCapture
@@ -128,13 +145,16 @@ struct MeasureFlowView: View {
                     }
                     .smBorderedButton()
                     .frame(minHeight: 44)
+                    .disabled(model.isMeasureRunning || running)
+                    .opacity(model.isMeasureRunning || running ? 0.45 : 1)
+                    .accessibilityHint("Skip Measure and pick a fast preset")
                 }
 
                 Text("Captures stay in memory and are discarded after analysis. System EQ is bypassed during the sweep so the mic hears the speaker, not a prior curve. Analyzer is a first pass — not a lab calibration.")
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
 
-                SystemHostStatusView()
+                SystemHostStatusView(compactWhenHealthy: true)
             }
             .padding(28)
         }
@@ -210,9 +230,22 @@ struct MeasureFlowView: View {
                 .foregroundStyle(SMTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
             if refused {
-                Text("Prior good profile kept if one existed. Retry after fixing level / noise, or use Narrow.")
+                Text("Prior good profile kept if one existed. Fix level / noise, then try again — or use Narrow.")
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
+                HStack(spacing: SMTheme.spaceSM) {
+                    Button("Try again") {
+                        model.clearMeasureRefusal()
+                    }
+                    .smProminentButton()
+                    .frame(minHeight: SMTheme.minTouch)
+                    .accessibilityHint("Clear this refusal and run another take")
+                    Button("Use Narrow instead") {
+                        model.autoScreen = .narrow
+                    }
+                    .smBorderedButton()
+                    .frame(minHeight: SMTheme.minTouch)
+                }
             }
         }
         .padding(SMTheme.spaceSM)
@@ -223,7 +256,7 @@ struct MeasureFlowView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(refused ? SMTheme.danger.opacity(0.35) : SMTheme.accent.opacity(0.35), lineWidth: 1)
         )
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(refused ? "Measure refused: \(note)" : "Measure result: \(note)")
     }
 
