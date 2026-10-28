@@ -6,6 +6,8 @@ struct CustomEQView: View {
     @EnvironmentObject private var model: AppModel
     @State private var bands: [EQBand] = EQCurve.flat.bands
     @State private var broadband: Double = 0
+    /// Paper L0 → L1: tone console collapsed until “Adjust tone”.
+    @State private var showTone = false
     @State private var showAdvanced = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -15,10 +17,13 @@ struct CustomEQView: View {
                 header
                 basedOnRow
                 intentStrip
-                bandConsole
-                broadbandRow
                 limiterStrip
                 toolbarRow
+                toneDisclosure
+                if showTone {
+                    bandConsole
+                    broadbandRow
+                }
                 SystemHostStatusView(compactWhenHealthy: true)
             }
             .padding(SMTheme.spaceXXL)
@@ -26,7 +31,14 @@ struct CustomEQView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: showAdvanced)
-        .onAppear(perform: syncFromModel)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: showTone)
+        .onAppear {
+            syncFromModel()
+            // Auto-reveal tone when the live curve already differs from Auto base (mid-edit return).
+            if model.activeCurve.sanitized() != model.customAutoBase.sanitized() {
+                showTone = true
+            }
+        }
         .onChange(of: model.activeCurve) { _, _ in
             syncFromModel()
         }
@@ -37,14 +49,50 @@ struct CustomEQView: View {
             Text("Custom")
                 .font(SMTheme.titleFont)
                 .foregroundStyle(SMTheme.ink)
-            Text("Same engine as Auto · refine with undo · safety caps stay on")
+            Text("Same engine as Auto · start with Quick feel · safety caps stay on")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.muted)
-            Text("Auto home stays sacred — switch Mode to Auto (⌘1) anytime. Hold Bypass to A/B.")
+            Text("Auto home stays sacred — Mode → Auto (⌘1). Hold Bypass to A/B.")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var toneDisclosure: some View {
+        Button {
+            showTone.toggle()
+            if !showTone { showAdvanced = false }
+        } label: {
+            HStack(spacing: SMTheme.spaceSM) {
+                Image(systemName: showTone ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(SMTheme.tertiary)
+                    .frame(width: 12)
+                    .accessibilityHidden(true)
+                Text(showTone ? "Hide tone bands" : "Adjust tone")
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(SMTheme.ink)
+                Spacer(minLength: 0)
+                Text(showTone ? "L1 open" : "Bands · broadband")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.tertiary)
+            }
+            .padding(.horizontal, SMTheme.spaceMD)
+            .padding(.vertical, SMTheme.spaceSM)
+            .background(
+                Color(nsColor: .controlBackgroundColor),
+                in: RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous)
+                    .strokeBorder(SMTheme.border.opacity(0.45), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(showTone ? "Hide tone bands" : "Adjust tone")
+        .accessibilityHint("Reveal musical bands and broadband after Quick feel")
+        .accessibilityAddTraits(.isButton)
     }
 
     private var basedOnRow: some View {
@@ -68,6 +116,7 @@ struct CustomEQView: View {
             ) { intent in
                 model.applyCustomIntent(intent)
                 syncFromModel()
+                // Intents are L0 — keep tone collapsed unless user already opened it.
             }
         }
     }
@@ -205,12 +254,6 @@ struct CustomEQView: View {
 
     private var toolbarRow: some View {
         HStack(spacing: SMTheme.spaceXS) {
-            Button(model.player.isPlaying ? "Stop" : "Audition") {
-                model.toggleAudition()
-            }
-            .smProminentButton()
-            .frame(minHeight: SMTheme.minTouch)
-
             Button("Undo") {
                 model.undoCustom()
                 syncFromModel()
@@ -234,6 +277,13 @@ struct CustomEQView: View {
             }
             .smBorderedButton()
             .frame(minHeight: SMTheme.minTouch)
+
+            Button(model.player.isPlaying ? "Stop audition" : "Audition") {
+                model.toggleAudition()
+            }
+            .smBorderedButton()
+            .frame(minHeight: SMTheme.minTouch)
+            .help("Optional in-app proof (⇧⌘A)")
 
             Spacer(minLength: 0)
         }
@@ -285,14 +335,14 @@ struct CustomEQView: View {
             }
             .help("Double-click to zero this band")
 
-            // Single-pointer alternative to the rotated drag fader (WCAG 2.2).
+            // Larger single-pointer targets (WCAG 2.2) as alternative to rotated fader.
             HStack(spacing: 4) {
                 Button {
                     nudgeGain(band, by: -0.5)
                 } label: {
                     Image(systemName: "minus")
-                        .font(.system(size: 11, weight: .bold))
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
                 .background(SMTheme.border.opacity(0.45))
@@ -303,8 +353,8 @@ struct CustomEQView: View {
                     nudgeGain(band, by: 0.5)
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 11, weight: .bold))
-                        .frame(width: 28, height: 28)
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
                 .background(SMTheme.border.opacity(0.45))
@@ -316,6 +366,27 @@ struct CustomEQView: View {
                 Text("Hz")
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
+                TextField(
+                    "Hz",
+                    value: Binding(
+                        get: { band.wrappedValue.frequencyHz },
+                        set: { raw in
+                            let hz = min(16_000, max(40, raw))
+                            band.wrappedValue.frequencyHz = hz
+                            band.wrappedValue.gainDb = SafetyLimits.clampBandGain(
+                                band.wrappedValue.gainDb,
+                                frequencyHz: hz
+                            )
+                            commit()
+                        }
+                    ),
+                    format: .number.precision(.fractionLength(0))
+                )
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 56)
+                .font(SMTheme.monoCaption)
+                .accessibilityLabel("Center frequency in hertz")
+
                 Slider(value: Binding(
                     get: { log2(max(40, band.wrappedValue.frequencyHz)) },
                     set: { logValue in

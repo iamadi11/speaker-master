@@ -8,12 +8,13 @@ struct MicDevice: Identifiable, Hashable {
     var name: String
 }
 
-enum MicRecorderError: LocalizedError {
+enum MicRecorderError: LocalizedError, Equatable {
     case noDeviceSelected
     case deviceNotInput(String)
     case cannotBindInput(String)
     case engineStartFailed(String)
     case emptyCapture(String)
+    case cancelled
 
     var errorDescription: String? {
         switch self {
@@ -27,6 +28,8 @@ enum MicRecorderError: LocalizedError {
             return "Mic capture failed to start (\(detail))"
         case .emptyCapture(let name):
             return "“\(name)” returned no audio — try Built-in Microphone, or refresh and re-select"
+        case .cancelled:
+            return "Measure cancelled"
         }
     }
 }
@@ -217,22 +220,32 @@ final class MicRecorder: ObservableObject {
             throw MicRecorderError.engineStartFailed("record() returned false")
         }
 
-        // Short pre-settle so AVAudioRecorder / default-input bind stabilize before stimulus.
-        try await Task.sleep(nanoseconds: 250_000_000)
-
         do {
-            try player.start(mode: .sweep, curve: stimulusCurve)
+            // Short pre-settle so AVAudioRecorder / default-input bind stabilize before stimulus.
+            try await Self.sleepCheckingCancellation(seconds: 0.25)
+
+            do {
+                try player.start(mode: .sweep, curve: stimulusCurve)
+            } catch {
+                recorder.stop()
+                throw error
+            }
+
+            try await Self.sleepCheckingCancellation(seconds: duration)
+
+            player.stop()
+            // Brief post-settle captures room ring without truncating the sweep body.
+            try await Self.sleepCheckingCancellation(seconds: 0.15)
+            recorder.stop()
+        } catch is CancellationError {
+            player.stop()
+            recorder.stop()
+            throw MicRecorderError.cancelled
         } catch {
+            player.stop()
             recorder.stop()
             throw error
         }
-
-        try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
-
-        player.stop()
-        // Brief post-settle captures room ring without truncating the sweep body.
-        try await Task.sleep(nanoseconds: 150_000_000)
-        recorder.stop()
 
         let captured: [Float]
         let fileRate: Double
@@ -247,6 +260,18 @@ final class MicRecorder: ObservableObject {
             throw MicRecorderError.emptyCapture(displayName)
         }
         return (captured, fileRate)
+    }
+
+    /// Slice sleeps so Cancel can abort mid-sweep without waiting for the full duration.
+    private static func sleepCheckingCancellation(seconds: TimeInterval) async throws {
+        var remaining = max(0, seconds)
+        let slice: TimeInterval = 0.05
+        while remaining > 0 {
+            try Task.checkCancellation()
+            let step = min(slice, remaining)
+            try await Task.sleep(nanoseconds: UInt64(step * 1_000_000_000))
+            remaining -= step
+        }
     }
 
     // MARK: - Default input (AVAudioRecorder listens here)

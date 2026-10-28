@@ -56,6 +56,11 @@ final class AppModel: ObservableObject {
     private let persistence = NarrowPersistencePolicy()
     private var customStack = CustomEditStack(base: .flat)
     private var cancellables = Set<AnyCancellable>()
+    /// In-flight Measure task — cancelled by `cancelMeasure()` (paper §2.3 Sweep cancelled).
+    private var measureTask: Task<Void, Never>?
+    private var lastAnnouncedHostPhase: AudioTapHostPhase?
+    /// Tracks last known output UID so new-speaker copy stays honest after device flips.
+    private var trackedOutputUID: String = ""
 
     init(profiles: SpeakerProfileStore = UserDefaultsProfileStore()) {
         self.profiles = profiles
@@ -70,9 +75,18 @@ final class AppModel: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
         systemHost.objectWillChange
-            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+                self?.syncSystemEQStatusHonesty()
+            }
             .store(in: &cancellables)
         restoreIfPossible()
+        trackedOutputUID = output.identity.outputUID
+    }
+
+    /// True while a Measure capture/analyze is in flight (UI disables competing CTAs).
+    var isMeasureRunning: Bool {
+        measurePhase == .recording || measurePhase == .analyzing
     }
 
     var outputIdentity: SpeakerIdentity { output.identity }
@@ -109,13 +123,25 @@ final class AppModel: ObservableObject {
             autoScreen = .pathPicker
             activeCurve = .flat
             lastSource = nil
+            lastNarrowPresetID = nil
+            measureNote = nil
+            measurePhase = .idle
+            lastMeasureQuality = nil
             resetCustomStack(base: .flat)
+            // Honest empty / new-speaker strip — never leave stale “On for…” copy.
+            statusMessage = "No EQ yet — pick Measure or Narrow"
         }
     }
 
     func onOutputChanged() {
+        let previousUID = trackedOutputUID
         restoreIfPossible()
+        let currentUID = output.identity.outputUID
+        trackedOutputUID = currentUID
         pushCurveToHosts()
+        if autoScreen == .pathPicker, !previousUID.isEmpty, previousUID != currentUID {
+            statusMessage = "New speaker — pick Measure or Narrow"
+        }
     }
 
     func applyNarrow(preset: NarrowPreset) {
@@ -128,15 +154,36 @@ final class AppModel: ObservableObject {
         apply(profile: profile, persist: true)
         autoScreen = .home
         statusMessage = "Narrow · \(preset.title) · Stays until Retry or a different speaker"
-        measureNote = preset.summary
+        measureNote = "\(preset.summary) · Not calibrated — Measure later for a better match."
     }
 
     func runMeasure() async {
+        measureTask?.cancel()
+        let task = Task { @MainActor in
+            await self.performMeasure()
+        }
+        measureTask = task
+        await task.value
+        if measureTask == task {
+            measureTask = nil
+        }
+    }
+
+    /// Abort in-flight Measure; prior good profile kept (paper §2.3).
+    func cancelMeasure() {
+        measureTask?.cancel()
+    }
+
+    private func performMeasure() async {
         statusMessage = "Measuring…"
         measureNote = nil
         lastMeasureQuality = nil
         measurePhase = .idle
         let ok = await mic.requestPermission()
+        guard !Task.isCancelled else {
+            handleMeasureCancelled(hostWasActive: false, previousBypass: bypassed)
+            return
+        }
         guard ok else {
             statusMessage = "Mic permission needed — or use Narrow"
             measureNote = "Allow Microphone in System Settings, or pick Narrow."
@@ -171,13 +218,16 @@ final class AppModel: ObservableObject {
                 player: player,
                 stimulusCurve: .flat
             )
+            try Task.checkCancellation()
             setBypass(previousBypass)
             measurePhase = .analyzing
+            statusMessage = "Analyzing…"
 
             let result = MeasureAnalyzer.analyze(
                 samples: capture.samples,
                 sampleRate: capture.sampleRate
             )
+            try Task.checkCancellation()
             lastMeasureQuality = result.quality
             switch MeasurePipeline.decision(from: result) {
             case .apply(let correction, let notes):
@@ -190,8 +240,8 @@ final class AppModel: ObservableObject {
                 autoScreen = .home
                 measurePhase = .applied
                 statusMessage = result.quality == .good
-                    ? "Measure · Better sound is on · Stays until Retry"
-                    : "Measure · Applied (cautious) · Stays until Retry"
+                    ? "Measure · Better sound is on · Stays until Retry or a different speaker"
+                    : "Measure · Applied (cautious) · Stays until Retry or a different speaker"
                 let bands = MeasureAnalyzer.bandCorrectionSummary(from: result)
                 measureNote = bands.isEmpty ? notes : "\(notes)\nBands: \(bands)"
             case .refuse(let notes):
@@ -205,6 +255,10 @@ final class AppModel: ObservableObject {
                     systemHost.resumeAfterMeasure(curve: activeCurve)
                 }
             }
+        } catch MicRecorderError.cancelled {
+            handleMeasureCancelled(hostWasActive: hostWasActive, previousBypass: previousBypass)
+        } catch is CancellationError {
+            handleMeasureCancelled(hostWasActive: hostWasActive, previousBypass: previousBypass)
         } catch {
             setBypass(previousBypass)
             if hostWasActive {
@@ -215,6 +269,50 @@ final class AppModel: ObservableObject {
             measurePhase = .refused
             lastMeasureQuality = .badTake
             autoScreen = .measure
+        }
+    }
+
+    private func handleMeasureCancelled(hostWasActive: Bool, previousBypass: Bool) {
+        player.stop()
+        setBypass(previousBypass)
+        if hostWasActive {
+            systemHost.resumeAfterMeasure(curve: activeCurve)
+        }
+        statusMessage = "Measure cancelled — prior profile kept"
+        measureNote = "Sweep stopped. Nothing new applied. Try again when ready, or use Narrow."
+        measurePhase = .idle
+        lastMeasureQuality = nil
+        // Do not force autoScreen — Cancel stays on Measure; Back may already have left for path picker.
+    }
+
+    /// Clear a refused/cancelled take so Play & measure is the next action again.
+    func clearMeasureRefusal() {
+        measurePhase = .idle
+        measureNote = nil
+        lastMeasureQuality = nil
+        statusMessage = "Ready to measure — place mic, then Play"
+    }
+
+    /// Elevate status strip when System EQ needs attention (journey honesty).
+    private func syncSystemEQStatusHonesty() {
+        let phase = systemHost.phase
+        guard phase != lastAnnouncedHostPhase else { return }
+        lastAnnouncedHostPhase = phase
+        switch phase {
+        case .needsPermission:
+            if !statusMessage.contains("Privacy") && !isMeasureRunning {
+                statusMessage = "System EQ needs Screen & System Audio permission"
+            }
+        case .failed:
+            if !isMeasureRunning {
+                statusMessage = "System EQ failed — Retry or open Privacy settings"
+            }
+        case .activeInAppOnly:
+            if !isMeasureRunning, lastSource != nil {
+                statusMessage = "In-app audition only — system-wide not active yet"
+            }
+        default:
+            break
         }
     }
 
