@@ -1,4 +1,4 @@
-/// Speaker Master — domain scaffold (DSP/app not implemented yet).
+/// Speaker Master — domain library (DSP, safety, Narrow, Measure, profiles).
 ///
 /// Product: MacBook system-wide EQ.
 /// Auto = Measure | Narrow; Custom = pro console.
