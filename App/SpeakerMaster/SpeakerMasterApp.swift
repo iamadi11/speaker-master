@@ -16,6 +16,9 @@ struct SpeakerMasterApp: App {
                     if CommandLine.arguments.contains("--open-measure") {
                         model.autoScreen = .measure
                     }
+                    if CommandLine.arguments.contains("--open-custom") {
+                        model.tab = .custom
+                    }
                     if CommandLine.arguments.contains("--dump-mics") {
                         dumpMicsAndExit()
                         return

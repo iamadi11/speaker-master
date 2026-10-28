@@ -117,8 +117,7 @@ struct AutoPathPickerView: View {
             Button(model.player.isPlaying ? "Stop audition" : "Play audition noise") {
                 model.toggleAudition()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(SMTheme.accent)
+            .smProminentButton()
             Text("In-app noise proves the curve; system-wide EQ covers Spotify/YouTube once the tap is active.")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.muted)
@@ -152,17 +151,16 @@ struct AutoHomeView: View {
                 Button(model.player.isPlaying ? "Stop audition" : "Play audition") {
                     model.toggleAudition()
                 }
-                .buttonStyle(.bordered)
+                .smBorderedButton()
                 .frame(minHeight: 36)
             }
 
             HStack(spacing: SMTheme.spaceSM) {
                 Button("Retry") { model.retry() }
-                    .buttonStyle(.bordered)
+                    .smBorderedButton()
                     .frame(minHeight: 36)
                 Button("Open Custom") { model.tab = .custom }
-                    .buttonStyle(.borderedProminent)
-                    .tint(SMTheme.accent)
+                    .smProminentButton()
                     .frame(minHeight: 36)
             }
 

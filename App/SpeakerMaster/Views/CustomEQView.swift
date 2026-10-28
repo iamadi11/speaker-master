@@ -199,15 +199,14 @@ struct CustomEQView: View {
             Button(model.player.isPlaying ? "Stop" : "Audition") {
                 model.toggleAudition()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(SMTheme.accent)
+            .smProminentButton()
             .frame(minHeight: 36)
 
             Button("Undo") {
                 model.undoCustom()
                 syncFromModel()
             }
-            .buttonStyle(.bordered)
+            .smBorderedButton()
             .disabled(!model.customCanUndo)
             .frame(minHeight: 36)
 
@@ -215,7 +214,7 @@ struct CustomEQView: View {
                 model.resetCustomToAuto()
                 syncFromModel()
             }
-            .buttonStyle(.bordered)
+            .smBorderedButton()
             .frame(minHeight: 36)
             .help("Restore the last Auto Measure or Narrow curve")
 
@@ -223,7 +222,7 @@ struct CustomEQView: View {
                 model.resetCustom()
                 syncFromModel()
             }
-            .buttonStyle(.bordered)
+            .smBorderedButton()
             .frame(minHeight: 36)
 
             Spacer(minLength: 0)

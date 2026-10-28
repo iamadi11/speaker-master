@@ -47,7 +47,7 @@ struct MeasureFlowView: View {
                                 model.mic.refreshDevices()
                             }
                         }
-                        .buttonStyle(.bordered)
+                        .smBorderedButton()
                         .accessibilityHint("Rescan available microphones")
                         Text("Built-in OK for a first pass · last choice remembered")
                             .font(SMTheme.captionFont)
@@ -102,8 +102,7 @@ struct MeasureFlowView: View {
                         }
                         .frame(minWidth: 160)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(SMTheme.accent)
+                    .smProminentButton()
                     .disabled(
                         running
                             || model.mic.devices.isEmpty
@@ -116,7 +115,7 @@ struct MeasureFlowView: View {
                     Button("Use Narrow instead") {
                         model.autoScreen = .narrow
                     }
-                    .buttonStyle(.bordered)
+                    .smBorderedButton()
                     .frame(minHeight: 44)
                 }
 
@@ -148,12 +147,11 @@ struct MeasureFlowView: View {
                 Button("Open Microphone settings") {
                     openMicrophoneSettings()
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(SMTheme.accent)
+                .smProminentButton()
                 Button("Ask again") {
                     Task { _ = await model.mic.requestPermission() }
                 }
-                .buttonStyle(.bordered)
+                .smBorderedButton()
             }
         }
         .padding(10)
@@ -223,13 +221,12 @@ struct MeasureFlowView: View {
                     Button("Open Microphone settings") {
                         openMicrophoneSettings()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(SMTheme.accent)
+                    .smProminentButton()
                     .frame(minHeight: 36)
                     Button("Use Narrow instead") {
                         model.autoScreen = .narrow
                     }
-                    .buttonStyle(.bordered)
+                    .smBorderedButton()
                     .frame(minHeight: 36)
                 }
             }
@@ -257,7 +254,7 @@ struct MeasureFlowView: View {
                 Button("Use Narrow instead") {
                     model.autoScreen = .narrow
                 }
-                .buttonStyle(.bordered)
+                .smBorderedButton()
                 .frame(minHeight: 36)
             }
             .accessibilityLabel("No microphones found")
