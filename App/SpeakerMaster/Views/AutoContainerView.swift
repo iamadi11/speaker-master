@@ -147,15 +147,11 @@ struct AutoHomeView: View {
             }
 
             HStack(spacing: SMTheme.spaceSM) {
-                BypassButton()
                 Button(model.player.isPlaying ? "Stop audition" : "Play audition") {
                     model.toggleAudition()
                 }
                 .smBorderedButton()
                 .frame(minHeight: 36)
-            }
-
-            HStack(spacing: SMTheme.spaceSM) {
                 Button("Retry") { model.retry() }
                     .smBorderedButton()
                     .frame(minHeight: 36)
