@@ -1,7 +1,8 @@
+import AppKit
 import SpeakerMaster
 import SwiftUI
 
-/// Honest system-wide host status + permission recovery (ui-ux-pro-max: empty state + action).
+/// Honest system-wide host status + permission recovery.
 struct SystemHostStatusView: View {
     @EnvironmentObject private var model: AppModel
 
@@ -35,7 +36,7 @@ struct SystemHostStatusView: View {
                             }
                         }
                         .smProminentButton()
-                        .frame(minHeight: 36)
+                        .frame(minHeight: SMTheme.minTouch)
                         .accessibilityHint(
                             primary == "Open Privacy Settings"
                                 ? "Opens Screen and System Audio Recording settings"
@@ -51,7 +52,7 @@ struct SystemHostStatusView: View {
                             }
                         }
                         .smBorderedButton()
-                        .frame(minHeight: 36)
+                        .frame(minHeight: SMTheme.minTouch)
                     }
                 }
             } else if showsLegacyActions {
@@ -61,23 +62,22 @@ struct SystemHostStatusView: View {
                             model.systemHost.openPrivacySettings()
                         }
                         .smProminentButton()
-                        .frame(minHeight: 36)
+                        .frame(minHeight: SMTheme.minTouch)
                     }
                     Button("Retry system EQ") {
                         model.systemHost.retrySystemWide()
                     }
                     .smBorderedButton()
-                    .frame(minHeight: 36)
+                    .frame(minHeight: SMTheme.minTouch)
                 }
             }
         }
         .padding(SMTheme.spaceMD)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(panelFill)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(panelFill, in: RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(borderColor, lineWidth: empty != nil ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous)
+                .strokeBorder(borderColor, lineWidth: empty != nil ? 1 : 0.5)
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("System EQ status: \(empty?.title ?? statusTitle). \(empty?.body ?? model.systemHost.detail)")
@@ -86,13 +86,13 @@ struct SystemHostStatusView: View {
     private var panelFill: Color {
         switch model.systemHost.phase {
         case .needsPermission, .failed:
-            return SMTheme.danger.opacity(0.06)
+            return SMTheme.danger.opacity(0.08)
         case .activeInAppOnly:
-            return SMTheme.warning.opacity(0.08)
+            return SMTheme.warning.opacity(0.10)
         case .inactive:
-            return SMTheme.surface
+            return Color(nsColor: .controlBackgroundColor)
         default:
-            return SMTheme.surface
+            return Color(nsColor: .controlBackgroundColor)
         }
     }
 
@@ -100,7 +100,7 @@ struct SystemHostStatusView: View {
         switch model.systemHost.phase {
         case .needsPermission, .failed: return SMTheme.danger.opacity(0.35)
         case .activeInAppOnly: return SMTheme.warning.opacity(0.4)
-        default: return SMTheme.border
+        default: return SMTheme.border.opacity(0.55)
         }
     }
 

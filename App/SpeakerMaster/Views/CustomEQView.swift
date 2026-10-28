@@ -1,3 +1,4 @@
+import AppKit
 import SpeakerMaster
 import SwiftUI
 
@@ -10,17 +11,19 @@ struct CustomEQView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: SMTheme.spaceMD) {
+            VStack(alignment: .leading, spacing: SMTheme.spaceLG) {
                 header
                 basedOnRow
                 intentStrip
-                limiterStrip
                 bandConsole
                 broadbandRow
+                limiterStrip
                 toolbarRow
                 SystemHostStatusView()
             }
-            .padding(SMTheme.spaceLG)
+            .padding(SMTheme.spaceXXL)
+            .frame(maxWidth: 920, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: showAdvanced)
         .onAppear(perform: syncFromModel)
@@ -30,11 +33,11 @@ struct CustomEQView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
             Text("Custom")
                 .font(SMTheme.titleFont)
                 .foregroundStyle(SMTheme.ink)
-            Text("Pro console · same engine as Auto · safety caps enforced")
+            Text("Same engine as Auto · refine with undo · safety caps stay on")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.muted)
         }
@@ -42,54 +45,25 @@ struct CustomEQView: View {
 
     private var basedOnRow: some View {
         Text(model.customBasedOnLabel)
-            .font(SMTheme.captionFont.weight(.medium))
-            .foregroundStyle(SMTheme.ink)
-            .padding(.horizontal, SMTheme.spaceSM)
-            .padding(.vertical, SMTheme.spaceXS)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(SMTheme.accentSoft)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .font(SMTheme.captionFont)
+            .foregroundStyle(SMTheme.muted)
             .accessibilityLabel(model.customBasedOnLabel)
     }
 
     private var intentStrip: some View {
-        VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
+        VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
             Text("Quick feel")
                 .font(SMTheme.captionFont.weight(.semibold))
-                .foregroundStyle(SMTheme.muted)
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 96), spacing: SMTheme.spaceXS)],
-                alignment: .leading,
-                spacing: SMTheme.spaceXS
-            ) {
-                ForEach(CustomIntentCatalog.all) { intent in
-                    let selected = model.matchedCustomIntentID == intent.id
-                    Button {
-                        model.applyCustomIntent(intent)
-                        syncFromModel()
-                    } label: {
-                        Text(intent.title)
-                            .font(SMTheme.captionFont.weight(.semibold))
-                            .foregroundStyle(selected ? Color.white : SMTheme.ink)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity, minHeight: 36)
-                            .background(selected ? SMTheme.accent : SMTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .strokeBorder(
-                                        selected ? SMTheme.accent : SMTheme.border,
-                                        lineWidth: 1
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(intent.title)
-                    .accessibilityHint(intent.summary)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-                    .help(intent.summary)
-                }
+                .foregroundStyle(SMTheme.tertiary)
+                .textCase(.uppercase)
+                .tracking(0.4)
+            // Soft chips — selected = light fill + accent hairline (not solid teal bricks).
+            FlowIntentChips(
+                intents: CustomIntentCatalog.all,
+                selectedID: model.matchedCustomIntentID
+            ) { intent in
+                model.applyCustomIntent(intent)
+                syncFromModel()
             }
         }
     }
@@ -98,34 +72,21 @@ struct CustomEQView: View {
         let live = EQCurve(bands: bands, broadbandGainDb: broadband, bypassed: false).sanitized()
         let headroom = live.constructiveHeadroomDb()
         let nearCap = headroom < 1.0
-        return HStack(alignment: .top, spacing: SMTheme.spaceSM) {
-            Image(systemName: nearCap ? "shield.lefthalf.filled" : "shield.checkered")
-                .foregroundStyle(nearCap ? SMTheme.warning : SMTheme.accent)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Limiter on · boosts capped (band ≤ +\(Int(SafetyLimits.maxPerBandBoostDb)) dB · bass ≤ +\(Int(SafetyLimits.maxBassBoostDb)) · broadband ≤ +\(Int(SafetyLimits.maxBroadbandBoostDb)) · total ≤ +\(Int(SafetyLimits.maxTotalConstructiveGainDb)))")
-                    .font(SMTheme.captionFont)
-                    .foregroundStyle(SMTheme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(
-                    nearCap
-                        ? String(format: "Constructive headroom %.1f dB — further boosts scale under the ceiling", max(0, headroom))
-                        : String(format: "Constructive headroom %.1f dB", headroom)
+        return Text(
+            nearCap
+                ? String(format: "Limiter on · headroom %.1f dB — further boosts scale under the ceiling", max(0, headroom))
+                : String(
+                    format: "Limiter on · band ≤ +%d · bass ≤ +%d · broadband ≤ +%d · total ≤ +%d · headroom %.1f dB",
+                    Int(SafetyLimits.maxPerBandBoostDb),
+                    Int(SafetyLimits.maxBassBoostDb),
+                    Int(SafetyLimits.maxBroadbandBoostDb),
+                    Int(SafetyLimits.maxTotalConstructiveGainDb),
+                    headroom
                 )
-                .font(SMTheme.captionFont.weight(.medium))
-                .foregroundStyle(nearCap ? SMTheme.warning : SMTheme.ink)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(SMTheme.spaceSM)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SMTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(nearCap ? SMTheme.warning.opacity(0.55) : SMTheme.border, lineWidth: 1)
         )
-        .accessibilityElement(children: .combine)
+        .font(SMTheme.captionFont)
+        .foregroundStyle(nearCap ? SMTheme.warning : SMTheme.tertiary)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityLabel(
             nearCap
                 ? "Limiter on, near total constructive ceiling"
@@ -160,11 +121,10 @@ struct CustomEQView: View {
             .padding(.vertical, 4)
         }
         .padding(SMTheme.spaceSM)
-        .background(SMTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(SMTheme.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous)
+                .strokeBorder(SMTheme.border.opacity(0.55), lineWidth: 0.5)
         )
     }
 
@@ -245,7 +205,7 @@ struct CustomEQView: View {
                 model.toggleAudition()
             }
             .smProminentButton()
-            .frame(minHeight: 36)
+            .frame(minHeight: SMTheme.minTouch)
 
             Button("Undo") {
                 model.undoCustom()
@@ -253,14 +213,15 @@ struct CustomEQView: View {
             }
             .smBorderedButton()
             .disabled(!model.customCanUndo)
-            .frame(minHeight: 36)
+            .frame(minHeight: SMTheme.minTouch)
+            .keyboardShortcut("z", modifiers: [.command])
 
             Button("Reset to Auto") {
                 model.resetCustomToAuto()
                 syncFromModel()
             }
             .smBorderedButton()
-            .frame(minHeight: 36)
+            .frame(minHeight: SMTheme.minTouch)
             .help("Restore the last Auto Measure or Narrow curve")
 
             Button("Flat") {
@@ -268,7 +229,7 @@ struct CustomEQView: View {
                 syncFromModel()
             }
             .smBorderedButton()
-            .frame(minHeight: 36)
+            .frame(minHeight: SMTheme.minTouch)
 
             Spacer(minLength: 0)
         }
@@ -442,5 +403,51 @@ struct CustomEQView: View {
         bands = curve.bands
         broadband = curve.broadbandGainDb
         model.updateCustom(curve)
+    }
+}
+
+/// Soft intent chips (modern minimal — no solid accent bricks).
+private struct FlowIntentChips: View {
+    let intents: [CustomIntent]
+    let selectedID: String?
+    let onSelect: (CustomIntent) -> Void
+
+    var body: some View {
+        // Simple wrapping via adaptive grid keeps dependency-free layout.
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 88), spacing: SMTheme.spaceSM)],
+            alignment: .leading,
+            spacing: SMTheme.spaceSM
+        ) {
+            ForEach(intents) { intent in
+                let selected = selectedID == intent.id
+                Button {
+                    onSelect(intent)
+                } label: {
+                    Text(intent.title)
+                        .font(SMTheme.captionFont.weight(selected ? .semibold : .medium))
+                        .foregroundStyle(selected ? SMTheme.accent : SMTheme.ink)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, minHeight: SMTheme.minTouch)
+                        .background(
+                            selected ? SMTheme.accentSoft : Color.clear,
+                            in: RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SMTheme.radiusControl, style: .continuous)
+                                .strokeBorder(
+                                    selected ? SMTheme.accent.opacity(0.7) : SMTheme.border.opacity(0.5),
+                                    lineWidth: 0.5
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(intent.title)
+                .accessibilityHint(intent.summary)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+                .help(intent.summary)
+            }
+        }
     }
 }

@@ -40,7 +40,7 @@ struct NarrowFlowView: View {
                     .padding(SMTheme.spaceSM)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(SMTheme.warning.opacity(0.10))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: SMTheme.radiusCard, style: .continuous))
                     .accessibilityLabel("Headphones warning for Narrow")
                 }
 
@@ -68,7 +68,7 @@ struct NarrowFlowView: View {
                     }
                 }
             }
-            .padding(SMTheme.spaceLG)
+            .padding(SMTheme.spaceXL)
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: suggestedID)
     }

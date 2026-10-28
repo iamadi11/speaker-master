@@ -1,3 +1,4 @@
+import AppKit
 import SpeakerMaster
 import SwiftUI
 
@@ -18,17 +19,18 @@ struct AutoContainerView: View {
     }
 }
 
+/// First-launch / no-profile: two quiet paths (ux-journey-pm + macos-design sparse chrome).
 struct AutoPathPickerView: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: SMTheme.spaceLG) {
-                VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
+            VStack(alignment: .leading, spacing: SMTheme.spaceXL) {
+                VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
                     Text("Make this speaker sound better")
                         .font(SMTheme.titleFont)
                         .foregroundStyle(SMTheme.ink)
-                    Text("Safety limits always on. Measure uses a mic for this speaker here. Narrow is a fast preset — not the same as measuring.")
+                    Text("Choose Measure for a mic take on this speaker here, or Narrow for a fast preset. Safety limits stay on.")
                         .font(SMTheme.bodyFont)
                         .foregroundStyle(SMTheme.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -41,88 +43,87 @@ struct AutoPathPickerView: View {
                     )
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.danger)
-                    .padding(12)
+                    .padding(SMTheme.spaceMD)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(SMTheme.danger.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(SMTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: SMTheme.radiusCard, style: .continuous))
                 }
 
-                HStack(spacing: SMTheme.spaceMD) {
-                    pathCard(
+                VStack(spacing: SMTheme.spaceSM) {
+                    pathRow(
                         title: "Measure",
-                        subtitle: "Use a mic",
-                        detail: "Listen with a mic, then fix this speaker in this place.",
+                        subtitle: "Use a mic · best for this speaker here",
                         systemImage: "mic.fill"
                     ) {
                         model.autoScreen = .measure
                     }
-                    pathCard(
+                    pathRow(
                         title: "Narrow",
-                        subtitle: "No mic needed",
-                        detail: "Quick improve without a mic. Not calibrated.",
-                        systemImage: "square.grid.2x2.fill"
+                        subtitle: "No mic · fast preset · not calibrated",
+                        systemImage: "square.grid.2x2"
                     ) {
                         model.autoScreen = .narrow
                     }
                 }
 
                 SystemHostStatusView()
-                auditionRow
+
+                HStack(spacing: SMTheme.spaceMD) {
+                    Button(model.player.isPlaying ? "Stop audition" : "Play audition noise") {
+                        model.toggleAudition()
+                    }
+                    .smBorderedButton()
+                    .help("Optional: prove the curve in-app (⇧⌘A)")
+                    Text("Optional. System-wide EQ covers other apps once the tap is active.")
+                        .font(SMTheme.captionFont)
+                        .foregroundStyle(SMTheme.tertiary)
+                    Spacer(minLength: 0)
+                }
             }
-            .padding(28)
+            .padding(SMTheme.spaceXXL)
+            .frame(maxWidth: 720, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func pathCard(
+    private func pathRow(
         title: String,
         subtitle: String,
-        detail: String,
         systemImage: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: SMTheme.spaceMD) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 28, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(SMTheme.accent)
+                    .frame(width: 28)
+                    .symbolRenderingMode(.hierarchical)
                     .accessibilityHidden(true)
-                Text(title)
-                    .font(SMTheme.headlineFont)
-                    .foregroundStyle(SMTheme.ink)
-                Text(subtitle)
-                    .font(.system(.subheadline, design: .rounded).weight(.medium))
-                    .foregroundStyle(SMTheme.accent)
-                Text(detail)
-                    .font(SMTheme.bodyFont)
-                    .foregroundStyle(SMTheme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(SMTheme.headlineFont)
+                        .foregroundStyle(SMTheme.ink)
+                    Text(subtitle)
+                        .font(SMTheme.captionFont)
+                        .foregroundStyle(SMTheme.muted)
+                }
                 Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SMTheme.tertiary)
+                    .accessibilityHidden(true)
             }
-            .padding(SMTheme.spaceLG)
-            .frame(maxWidth: .infinity, minHeight: 200, alignment: .topLeading)
-            .background(SMTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, SMTheme.spaceLG)
+            .padding(.vertical, SMTheme.spaceMD)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(SMTheme.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous)
+                    .strokeBorder(SMTheme.border.opacity(0.45), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-    }
-
-    private var auditionRow: some View {
-        HStack {
-            Button(model.player.isPlaying ? "Stop audition" : "Play audition noise") {
-                model.toggleAudition()
-            }
-            .smProminentButton()
-            Text("In-app noise proves the curve; system-wide EQ covers Spotify/YouTube once the tap is active.")
-                .font(SMTheme.captionFont)
-                .foregroundStyle(SMTheme.muted)
-            Spacer()
-        }
     }
 }
 
@@ -131,8 +132,8 @@ struct AutoHomeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: SMTheme.spaceLG) {
-            VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
-                Text("On for: \(model.outputIdentity.displayName)")
+            VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
+                Text("On for \(model.outputIdentity.displayName)")
                     .font(SMTheme.titleFont)
                     .foregroundStyle(SMTheme.ink)
                 Text(pathLabel)
@@ -141,7 +142,7 @@ struct AutoHomeView: View {
                 if let note = model.measureNote {
                     Text(note)
                         .font(SMTheme.captionFont)
-                        .foregroundStyle(SMTheme.muted)
+                        .foregroundStyle(SMTheme.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if model.lastSource == .measure, let quality = model.lastMeasureQuality {
@@ -158,21 +159,22 @@ struct AutoHomeView: View {
                     model.toggleAudition()
                 }
                 .smBorderedButton()
-                .frame(minHeight: 36)
+                .frame(minHeight: SMTheme.minTouch)
                 Button("Retry") { model.retry() }
                     .smBorderedButton()
-                    .frame(minHeight: 36)
+                    .frame(minHeight: SMTheme.minTouch)
+                    .help("Clear this speaker’s Auto result and choose Measure or Narrow again")
                 Button("Open Custom") { model.tab = .custom }
                     .smProminentButton()
-                    .frame(minHeight: 36)
-                    .accessibilityHint("Refine this Auto result in the Custom console")
+                    .frame(minHeight: SMTheme.minTouch)
+                    .accessibilityHint("Refine this Auto result in Custom")
             }
 
             SystemHostStatusView()
-
             Spacer(minLength: 0)
         }
-        .padding(SMTheme.spaceLG)
+        .padding(SMTheme.spaceXXL)
+        .frame(maxWidth: 720, maxHeight: .infinity, alignment: .topLeading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
