@@ -1,0 +1,12 @@
+---
+description: Merge/install safety for agents
+alwaysApply: true
+---
+
+# Agent safety
+
+- Never force-push `main`.
+- Never merge without green verification (`swift test` / CI).
+- Never install the app without a green verify in the same run.
+- Personal Mac install only via `Scripts/install-personal.sh`.
+- See `docs/agent-workflow.md`.
