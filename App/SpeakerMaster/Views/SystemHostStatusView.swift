@@ -34,8 +34,7 @@ struct SystemHostStatusView: View {
                                 model.systemHost.retrySystemWide()
                             }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(SMTheme.accent)
+                        .smProminentButton()
                         .frame(minHeight: 36)
                         .accessibilityHint(
                             primary == "Open Privacy Settings"
@@ -51,7 +50,7 @@ struct SystemHostStatusView: View {
                                 model.systemHost.retrySystemWide()
                             }
                         }
-                        .buttonStyle(.bordered)
+                        .smBorderedButton()
                         .frame(minHeight: 36)
                     }
                 }
@@ -61,14 +60,13 @@ struct SystemHostStatusView: View {
                         Button("Open Privacy Settings") {
                             model.systemHost.openPrivacySettings()
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(SMTheme.accent)
+                        .smProminentButton()
                         .frame(minHeight: 36)
                     }
                     Button("Retry system EQ") {
                         model.systemHost.retrySystemWide()
                     }
-                    .buttonStyle(.bordered)
+                    .smBorderedButton()
                     .frame(minHeight: 36)
                 }
             }

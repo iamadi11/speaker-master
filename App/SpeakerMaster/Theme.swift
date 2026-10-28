@@ -35,3 +35,18 @@ enum SMTheme {
             )
     }
 }
+
+extension View {
+    /// Bordered control with readable ink on light graphite surfaces (fixes washed-out macOS default).
+    func smBorderedButton() -> some View {
+        buttonStyle(.bordered)
+            .foregroundStyle(SMTheme.ink)
+            .tint(SMTheme.ink)
+    }
+
+    func smProminentButton() -> some View {
+        buttonStyle(.borderedProminent)
+            .tint(SMTheme.accent)
+            .foregroundStyle(Color.white)
+    }
+}
