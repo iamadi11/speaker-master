@@ -1,4 +1,5 @@
 import AppKit
+import SpeakerMaster
 import SwiftUI
 
 @main
@@ -17,6 +18,10 @@ struct SpeakerMasterApp: App {
                     }
                     if CommandLine.arguments.contains("--dump-mics") {
                         dumpMicsAndExit()
+                        return
+                    }
+                    if CommandLine.arguments.contains("--qa-nonmic") {
+                        runNonMicQAAndExit()
                         return
                     }
                     runSmokeIfRequested()
@@ -56,9 +61,87 @@ struct SpeakerMasterApp: App {
         }
     }
 
-    /// Crash-regression smokes. Exit 0 only if process survives the full sequence.
+    /// Narrow / Custom / Bypass / profile persistence — no Microphone TCC required.
+    @MainActor
+    private func runNonMicQAAndExit() {
+        Task { @MainActor in
+            var failed = false
+            func check(_ name: String, _ ok: Bool, _ detail: String = "") {
+                print("qa_\(name)=\(ok ? "pass" : "fail")\(detail.isEmpty ? "" : " \(detail)")")
+                if !ok { failed = true }
+            }
+
+            model.output.refresh()
+            let outName = model.outputIdentity.displayName
+            check("launch", true, "output=\(outName)")
+
+            // Narrow: apply suggested preset, persist, restore
+            let suggestedID = NarrowCatalog.suggestedPresetID(deviceName: outName)
+                ?? NarrowCatalog.all.first?.id
+            guard let suggestedID, let preset = NarrowCatalog.preset(id: suggestedID) else {
+                check("narrow_apply", false, "no_preset")
+                exit(1)
+            }
+            model.applyNarrow(preset: preset)
+            check(
+                "narrow_apply",
+                model.lastSource == .narrow && model.lastNarrowPresetID == preset.id,
+                "preset=\(preset.id)"
+            )
+            check("narrow_home", model.autoScreen == .home)
+            let stored = model.profiles.profile(forOutputUID: model.outputIdentity.outputUID)
+            check("narrow_persist", stored?.source == .narrow && stored?.narrowPresetID == preset.id)
+
+            // Retry clears persistence and returns to path picker
+            model.retry()
+            check("narrow_retry", model.autoScreen == .pathPicker && model.lastSource == nil)
+            check(
+                "narrow_retry_cleared",
+                model.profiles.profile(forOutputUID: model.outputIdentity.outputUID) == nil
+            )
+
+            // Re-apply so Custom / audition run against a live curve
+            model.applyNarrow(preset: preset)
+
+            // Custom: band edit + reset
+            var custom = EQCurve.flat
+            if var band = custom.bands.first {
+                band.gainDb = 3
+                custom.bands[0] = band
+            }
+            model.updateCustom(custom)
+            check("custom_edit", model.lastSource == .custom && model.activeCurve.bands[0].gainDb == 3)
+            model.resetCustom()
+            check("custom_reset", abs(model.activeCurve.bands[0].gainDb) < 0.01)
+
+            // Bypass A/B + audition noise
+            model.setBypass(true)
+            check("bypass_on", model.bypassed)
+            model.toggleAudition()
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            check("audition_play", model.player.isPlaying)
+            model.setBypass(false)
+            check("bypass_off", !model.bypassed)
+            model.toggleAudition()
+            check("audition_stop", !model.player.isPlaying)
+
+            // Output label present
+            check("output_label", !model.outputIdentity.displayName.isEmpty)
+
+            // System host status is one of the known honest states
+            switch model.systemHost.status {
+            case .inactive, .starting, .readyPendingPermission, .activeInAppOnly, .activeSystemWide, .failed:
+                check("system_host_status", true, "\(model.systemHost.status)")
+            }
+
+            exit(failed ? 1 : 0)
+        }
+    }
+
+    /// Crash-regression smokes. Exit 0 only if process survives the full sequence
+    /// **and** Measure sees a non-empty mic list when `--smoke-measure` / `--smoke-full`.
     /// - `--smoke-audition` — Play audition ~3s
-    /// - `--smoke-measure` — Measure record→analyze path (needs mic TCC)
+    /// - `--smoke-measure` — Measure record→analyze path (needs mic TCC / HAL inputs)
     /// - `--smoke-full` — audition + measure + idle hold (≥30s wall)
     @MainActor
     private func runSmokeIfRequested() {
@@ -69,6 +152,7 @@ struct SpeakerMasterApp: App {
         guard wantAudition || wantMeasure else { return }
 
         Task { @MainActor in
+            var failed = false
             let started = Date()
             if wantAudition {
                 model.toggleAudition()
@@ -79,8 +163,29 @@ struct SpeakerMasterApp: App {
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
             if wantMeasure {
-                model.autoScreen = .measure
-                await model.runMeasure()
+                _ = await model.mic.requestPermission()
+                model.mic.refreshDevices()
+                print("smoke_mic_count=\(model.mic.devices.count)")
+                if model.mic.devices.isEmpty || model.mic.selectedDeviceID == nil {
+                    print("smoke_fail=empty_mic_list")
+                    failed = true
+                } else {
+                    model.autoScreen = .measure
+                    await model.runMeasure()
+                    print("smoke_measure_status=\(model.statusMessage)")
+                    if let note = model.measureNote {
+                        print("smoke_measure_note=\(note)")
+                    }
+                    // Hard fail on empty mic / TCC / engine failure. Bad acoustic takes still
+                    // exit 0 (room-dependent) but permission and binding must work.
+                    if model.statusMessage == "No mic selected"
+                        || model.statusMessage.hasPrefix("Measure failed")
+                        || model.statusMessage.hasPrefix("Mic permission needed")
+                    {
+                        print("smoke_fail=measure_path")
+                        failed = true
+                    }
+                }
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
             if wantFull {
@@ -90,6 +195,9 @@ struct SpeakerMasterApp: App {
                 if remain > 0 {
                     try? await Task.sleep(nanoseconds: UInt64(remain * 1_000_000_000))
                 }
+            }
+            if failed {
+                exit(1)
             }
             NSApplication.shared.terminate(nil)
         }
