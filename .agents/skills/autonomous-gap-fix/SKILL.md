@@ -27,11 +27,12 @@ End-to-end ship loop for **speaker-master** on the owner’s Mac.
 Before inventing chrome or flows:
 
 1. `macos-design` / `macos-patterns` / `apple-design` — modern minimal native look  
-2. `ux-journey-pm` — journey map + checklist  
+2. `ux-journey-pm` — journey map, screen-states, anti-patterns, decision checklist  
 3. `ui-ux-pro-max` — a11y only (defer visuals to macOS skills)  
 4. Then this skill’s ship loop  
 
-Visual bar: sparse macOS chrome over dense teal Custom clutter (`AGENTS.md`).
+Visual bar: sparse macOS chrome over dense teal Custom clutter (`AGENTS.md`).  
+Journey bar: fix flow/copy/state gaps before any theme pass.
 
 ## Process
 

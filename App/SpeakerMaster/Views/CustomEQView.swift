@@ -19,7 +19,7 @@ struct CustomEQView: View {
                 broadbandRow
                 limiterStrip
                 toolbarRow
-                SystemHostStatusView()
+                SystemHostStatusView(compactWhenHealthy: true)
             }
             .padding(SMTheme.spaceXXL)
             .frame(maxWidth: 920, alignment: .leading)
@@ -40,6 +40,10 @@ struct CustomEQView: View {
             Text("Same engine as Auto · refine with undo · safety caps stay on")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.muted)
+            Text("Auto home stays sacred — switch Mode to Auto (⌘1) anytime. Hold Bypass to A/B.")
+                .font(SMTheme.captionFont)
+                .foregroundStyle(SMTheme.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

@@ -24,9 +24,13 @@ struct NarrowFlowView: View {
                     Text("Narrow")
                         .font(SMTheme.titleFont)
                         .foregroundStyle(SMTheme.ink)
-                    Text("Quick improve without a mic. Saved for this speaker until Retry. For a better match, use Measure.")
+                    Text("Quick improve without a mic — not calibrated, not the same as Measure. Tap a preset to apply once; it stays on until Retry or a different speaker.")
                         .font(SMTheme.bodyFont)
                         .foregroundStyle(SMTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Suggested is highlighted from this output’s name. Prefer Measure later for a better match.")
+                        .font(SMTheme.captionFont)
+                        .foregroundStyle(SMTheme.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 

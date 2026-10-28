@@ -35,6 +35,10 @@ struct MeasureFlowView: View {
 
                 stepRow
 
+                if running || model.measurePhase == .recording || model.measurePhase == .analyzing {
+                    phaseGuidanceBanner
+                }
+
                 VStack(alignment: .leading, spacing: 10) {
                     Text("1 · Microphone")
                         .font(SMTheme.captionFont.weight(.semibold))
@@ -150,6 +154,37 @@ struct MeasureFlowView: View {
             if model.mic.isRecording { return "Listening…" }
             return running ? "Working…" : "Play & measure"
         }
+    }
+
+    private var phaseGuidanceBanner: some View {
+        let copy: (title: String, body: String) = {
+            switch model.measurePhase {
+            case .recording:
+                return ("Recording", "Stay quiet — the mic is listening to the sweep through the room.")
+            case .analyzing:
+                return ("Analyzing", "Building the best safe Auto EQ from this take, then applying it.")
+            default:
+                return ("Working", "Preparing the sweep…")
+            }
+        }()
+        return HStack(alignment: .top, spacing: SMTheme.spaceSM) {
+            ProgressView()
+                .controlSize(.small)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(copy.title)
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(SMTheme.ink)
+                Text(copy.body)
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(SMTheme.spaceMD)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SMTheme.accentSoft, in: RoundedRectangle(cornerRadius: SMTheme.radiusPanel, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(copy.title). \(copy.body)")
     }
 
     private func resultCard(note: String) -> some View {

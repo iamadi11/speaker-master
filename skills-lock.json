@@ -241,13 +241,13 @@
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
-      "computedHash": "f2e77246c0695dd30d842ec45937f69dede2a133135f7d840dadec0971986d86"
+      "computedHash": "b00f3742f0cb03d6348d4b0f91b11b0c3768b5adec3e696108a1ef9093b11fc3"
     },
     "ux-journey-pm": {
       "source": "speaker-master",
       "sourceType": "local",
       "skillPath": ".agents/skills/ux-journey-pm/SKILL.md",
-      "computedHash": "1b05a2af9eb16f8c2ea8f1dc2125b0d90a75a287ea4beda5d1ac0f9d58eac985"
+      "computedHash": "77476df71cdc32c7b4b837a3ea4f31972057cccc5891218f283c9e5d72c615d9"
     },
     "wait-what": {
       "source": "mattpocock/skills",

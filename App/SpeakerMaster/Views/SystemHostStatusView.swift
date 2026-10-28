@@ -5,9 +5,54 @@ import SwiftUI
 /// Honest system-wide host status + permission recovery.
 struct SystemHostStatusView: View {
     @EnvironmentObject private var model: AppModel
+    /// When true, healthy/inactive phases render as a thin caption so path CTAs stay primary.
+    var compactWhenHealthy: Bool = false
+
+    private var isAttentionPhase: Bool {
+        switch model.systemHost.phase {
+        case .needsPermission, .failed, .activeInAppOnly:
+            return true
+        default:
+            return false
+        }
+    }
 
     var body: some View {
         let empty = SystemEQEmptyStateCopy.forPhase(model.systemHost.phase)
+        // Keep path CTAs primary: inactive/healthy → thin caption; permission/fail → full panel.
+        if compactWhenHealthy && !isAttentionPhase {
+            compactHealthyRow(title: empty?.title ?? statusTitle, detail: empty?.body ?? model.systemHost.detail)
+        } else {
+            fullPanel(empty: empty)
+        }
+    }
+
+    private func compactHealthyRow(title: String, detail: String) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 7, height: 7)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(SMTheme.captionFont)
+                .foregroundStyle(SMTheme.muted)
+            if !detail.isEmpty {
+                Text("·")
+                    .foregroundStyle(SMTheme.tertiary)
+                    .accessibilityHidden(true)
+                Text(detail)
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.tertiary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("System EQ status: \(title). \(detail)")
+    }
+
+    @ViewBuilder
+    private func fullPanel(empty: SystemEQEmptyStateCopy?) -> some View {
         VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
             HStack(spacing: 8) {
                 Circle()

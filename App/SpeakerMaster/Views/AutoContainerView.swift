@@ -27,10 +27,16 @@ struct AutoPathPickerView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: SMTheme.spaceXL) {
                 VStack(alignment: .leading, spacing: SMTheme.spaceSM) {
+                    Text("No EQ yet for this speaker")
+                        .font(SMTheme.captionFont.weight(.semibold))
+                        .foregroundStyle(SMTheme.tertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.4)
+                        .accessibilityAddTraits(.isHeader)
                     Text("Make this speaker sound better")
                         .font(SMTheme.titleFont)
                         .foregroundStyle(SMTheme.ink)
-                    Text("Choose Measure for a mic take on this speaker here, or Narrow for a fast preset. Safety limits stay on.")
+                    Text("Pick one path. Measure listens with a mic for this speaker here. Narrow applies a fast preset — not calibrated. Safety limits stay on.")
                         .font(SMTheme.bodyFont)
                         .foregroundStyle(SMTheme.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -65,19 +71,18 @@ struct AutoPathPickerView: View {
                     }
                 }
 
-                SystemHostStatusView()
+                // System EQ quieter than the two paths on first launch (journey anti-pattern).
+                SystemHostStatusView(compactWhenHealthy: true)
 
-                HStack(spacing: SMTheme.spaceMD) {
-                    Button(model.player.isPlaying ? "Stop audition" : "Play audition noise") {
-                        model.toggleAudition()
-                    }
-                    .smBorderedButton()
-                    .help("Optional: prove the curve in-app (⇧⌘A)")
-                    Text("Optional. System-wide EQ covers other apps once the tap is active.")
-                        .font(SMTheme.captionFont)
-                        .foregroundStyle(SMTheme.tertiary)
-                    Spacer(minLength: 0)
+                Text("Optional: Play audition (⇧⌘A) after you apply a path — or hold Bypass to A/B.")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(model.player.isPlaying ? "Stop audition" : "Play audition noise") {
+                    model.toggleAudition()
                 }
+                .smBorderedButton()
+                .help("Optional: prove the curve in-app (⇧⌘A)")
             }
             .padding(SMTheme.spaceXXL)
             .frame(maxWidth: 720, alignment: .leading)
@@ -139,6 +144,14 @@ struct AutoHomeView: View {
                 Text(pathLabel)
                     .font(SMTheme.bodyFont)
                     .foregroundStyle(SMTheme.muted)
+                Text("Stays on until Retry or a different speaker.")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.tertiary)
+                Text(bypassHint)
+                    .font(SMTheme.captionFont.weight(.medium))
+                    .foregroundStyle(SMTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(bypassHint)
                 if let note = model.measureNote {
                     Text(note)
                         .font(SMTheme.captionFont)
@@ -147,30 +160,31 @@ struct AutoHomeView: View {
                 }
                 if model.lastSource == .measure, let quality = model.lastMeasureQuality {
                     Text(quality == .good
-                          ? "Take quality: good · hold Bypass to A/B"
-                          : "Take quality: cautious · hold Bypass to A/B · retry if unsure")
+                          ? "Take quality: good"
+                          : "Take quality: cautious · retry if unsure")
                         .font(SMTheme.captionFont.weight(.medium))
                         .foregroundStyle(SMTheme.ink)
                 }
             }
 
             HStack(spacing: SMTheme.spaceSM) {
+                Button("Retry") { model.retry() }
+                    .smBorderedButton()
+                    .frame(minHeight: SMTheme.minTouch)
+                    .help("Clear this speaker’s Auto result and choose Measure or Narrow again")
                 Button(model.player.isPlaying ? "Stop audition" : "Play audition") {
                     model.toggleAudition()
                 }
                 .smBorderedButton()
                 .frame(minHeight: SMTheme.minTouch)
-                Button("Retry") { model.retry() }
-                    .smBorderedButton()
-                    .frame(minHeight: SMTheme.minTouch)
-                    .help("Clear this speaker’s Auto result and choose Measure or Narrow again")
+                .help("Optional in-app proof (⇧⌘A)")
                 Button("Open Custom") { model.tab = .custom }
                     .smProminentButton()
                     .frame(minHeight: SMTheme.minTouch)
-                    .accessibilityHint("Refine this Auto result in Custom")
+                    .accessibilityHint("Refine this Auto result in Custom — Auto home stays sacred")
             }
 
-            SystemHostStatusView()
+            SystemHostStatusView(compactWhenHealthy: true)
             Spacer(minLength: 0)
         }
         .padding(SMTheme.spaceXXL)
@@ -183,9 +197,13 @@ struct AutoHomeView: View {
         case .measure: return "Path: Measure · Saved for this speaker"
         case .narrow:
             let name = model.lastNarrowPresetID.flatMap { NarrowCatalog.preset(id: $0)?.title } ?? "Narrow"
-            return "Path: Narrow · \(name)"
-        case .custom: return "Path: Custom"
+            return "Path: Narrow · \(name) · Saved for this speaker"
+        case .custom: return "Path: Custom · edits on this speaker"
         case .none: return "Path: —"
         }
+    }
+
+    private var bypassHint: String {
+        "Next: hold Bypass in the toolbar to hear before (A/B). Release to hear the fix again."
     }
 }

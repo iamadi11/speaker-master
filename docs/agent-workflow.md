@@ -9,7 +9,9 @@
    Attribution: `docs/skills-attribution.md`.
 
 2. **ux-journey-pm** (custom) — `.agents/skills/ux-journey-pm`  
-   End-to-end user journey: first launch → permissions → Auto Measure|Narrow → Custom → System EQ. Load **after** macOS skills, **before** ui-ux-pro-max.
+   Product + UX journey PM: first launch → permissions → Auto Measure|Narrow → Custom → System EQ.  
+   Owns flow/copy/state (wins over macOS skills on those). Load **after** macOS skills, **before** ui-ux-pro-max.  
+   References: `journey-checklist.md`, `screen-states.md`, `anti-patterns.md`.
 
 3. **ui-ux-pro-max** — `.agents/skills/ui-ux-pro-max`  
    Source: `nextlevelbuilder/ui-ux-pro-max-skill`. Use for a11y / interaction support. **Defer** visual direction to macOS skills (no teal-dense override).
@@ -34,7 +36,8 @@ Conflicts: macOS skills win on visuals; ux-journey-pm wins on flow/copy/state.
 ## Trigger: UX journey PM
 
 **Slash:** `/ux-journey-pm`  
-**Phrase:** `user journey`, `first launch flow`, `permission UX`, `Auto to Custom path`
+**Phrase:** `user journey`, `first launch flow`, `permission UX`, `Auto to Custom path`, `empty state copy`  
+**Before UI edits:** run the skill’s decision checklist (stage → job → one next action → states → Auto sacred).
 
 ## Trigger: autonomous gap-fix
 
