@@ -7,8 +7,10 @@ Personal use. Swift / Core Audio **process tap + private aggregate**. Free Apple
 ## Launch on this Mac
 
 ```bash
-# Verify domain + build .app + install
-swift test --package-path .
+# Crash gate (swift test + build + audition/measure ≥30s, asserts no new IPS)
+./Scripts/smoke-mac.sh full
+
+# Install only after smoke passes (install re-runs the gate)
 ./Scripts/install-personal.sh
 ```
 

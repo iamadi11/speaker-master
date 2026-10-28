@@ -31,6 +31,21 @@ private final class MicSampleBuffer: @unchecked Sendable {
     }
 }
 
+/// Install tap off the MainActor — Swift 6 isolates closures created inside
+/// `@MainActor` methods, which traps on `RealtimeMessenger.mServiceQueue`.
+private enum MicTapFactory {
+    nonisolated static func install(
+        on input: AVAudioInputNode,
+        format: AVAudioFormat,
+        buffer: MicSampleBuffer
+    ) {
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buf, _ in
+            guard let channel = buf.floatChannelData?[0] else { return }
+            buffer.append(channel, count: Int(buf.frameLength))
+        }
+    }
+}
+
 enum MicRecorderError: LocalizedError {
     case noDeviceSelected
     case deviceNotInput(String)
@@ -147,13 +162,8 @@ final class MicRecorder: ObservableObject {
         sampleRate = format.sampleRate > 0 ? format.sampleRate : 48_000
 
         // Shared buffer: audio thread appends; MainActor reads only after tap removed + engine stopped.
-        // Capture only `buffer` — never `self` — so the tap stays off the MainActor.
         let buffer = MicSampleBuffer(capacity: Int(sampleRate * duration) + 4096)
-
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buf, _ in
-            guard let channel = buf.floatChannelData?[0] else { return }
-            buffer.append(channel, count: Int(buf.frameLength))
-        }
+        MicTapFactory.install(on: input, format: format, buffer: buffer)
         tapInstalled = true
 
         do {
