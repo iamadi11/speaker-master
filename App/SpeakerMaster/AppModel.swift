@@ -162,8 +162,11 @@ final class AppModel: ObservableObject {
                 )
                 apply(profile: profile, persist: true)
                 autoScreen = .home
-                statusMessage = "Measure · Better sound is on"
-                measureNote = notes
+                statusMessage = result.quality == .good
+                    ? "Measure · Better sound is on"
+                    : "Measure · Applied (cautious)"
+                let bands = MeasureAnalyzer.bandCorrectionSummary(from: result)
+                measureNote = bands.isEmpty ? notes : "\(notes)\nBands: \(bands)"
             case .refuse(let notes):
                 // Do not overwrite a prior good profile with a hot guess.
                 statusMessage = "Bad take — nothing new applied"
