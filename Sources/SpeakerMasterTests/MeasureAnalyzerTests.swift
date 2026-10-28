@@ -39,4 +39,13 @@ struct MeasureAnalyzerTests {
         #expect(flat.bands.allSatisfy { abs($0.gainDb) < 0.01 })
         #expect(flat.broadbandGainDb == 0)
     }
+
+    @Test("hard-clipped samples are a bad take")
+    func rejectsClip() {
+        let samples = [Float](repeating: 0.99, count: 4096)
+        let result = MeasureAnalyzer.analyze(samples: samples, sampleRate: 48_000)
+        #expect(result.quality == .badTake)
+        #expect(result.correction == nil)
+        #expect(result.notes.lowercased().contains("clip"))
+    }
 }

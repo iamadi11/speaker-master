@@ -35,19 +35,43 @@ public enum MeasureAnalyzer: Sendable {
                 quality: .badTake,
                 correction: nil,
                 peakDbFS: -120,
-                notes: "Empty capture"
+                notes: "Empty capture — nothing applied"
             )
         }
 
         let peak = samples.map { abs($0) }.max() ?? 0
         let peakDb = peak > 0 ? 20 * log10(Double(peak)) : -120
 
+        // Hard clip on the mic path → refuse (safety-limits Measure failure → safe).
+        if peak >= 0.98 {
+            return MeasureAnalysisResult(
+                quality: .badTake,
+                correction: nil,
+                peakDbFS: peakDb,
+                notes: "Input clipped — lower speaker or mic level, then retry"
+            )
+        }
+
         if peak < 0.01 {
             return MeasureAnalysisResult(
                 quality: .badTake,
                 correction: nil,
                 peakDbFS: peakDb,
-                notes: "Near-silent take — check mic and level"
+                notes: "Near-silent take — check mic selection, placement, and level"
+            )
+        }
+
+        let rms = rootMeanSquare(samples)
+        let crestDb = peak > 0 && rms > 1e-9
+            ? 20 * log10(Double(peak) / Double(rms))
+            : 0
+        // Extremely peaky / clicky captures are usually bad room noise, not a sweep.
+        if crestDb > 28 {
+            return MeasureAnalysisResult(
+                quality: .badTake,
+                correction: nil,
+                peakDbFS: peakDb,
+                notes: "Too noisy or spiky — quiet the room and retry, or use Narrow"
             )
         }
 
@@ -58,7 +82,7 @@ public enum MeasureAnalyzer: Sendable {
                 quality: .badTake,
                 correction: nil,
                 peakDbFS: peakDb,
-                notes: "No usable band energy"
+                notes: "No usable band energy — nothing applied"
             )
         }
 
@@ -86,15 +110,25 @@ public enum MeasureAnalyzer: Sendable {
         }
 
         let curve = EQCurve(bands: bands, broadbandGainDb: 0, bypassed: false).sanitized()
-        let quality: MeasureAnalysisResult.Quality = peakDb > -3 ? .inconclusive : .good
+        let quality: MeasureAnalysisResult.Quality =
+            peakDb > -3 ? .inconclusive : .good
         return MeasureAnalysisResult(
             quality: quality,
             correction: curve,
             peakDbFS: peakDb,
             notes: quality == .good
-                ? "Cut-first correction within safety caps"
-                : "Hot input — correction proposed but re-level recommended"
+                ? "Cut-first correction within safety caps · limiter on"
+                : "Hot input — correction proposed; re-level recommended next time"
         )
+    }
+
+    private static func rootMeanSquare(_ samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+        var sum: Float = 0
+        for sample in samples {
+            sum += sample * sample
+        }
+        return sqrt(sum / Float(samples.count))
     }
 
     /// Goertzel-ish band energy around each scaffold center.

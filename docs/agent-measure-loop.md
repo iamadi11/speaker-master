@@ -2,9 +2,9 @@
 
 **Project:** speaker-master  
 **Task:** SM-18  
-**Status:** Research + design (no product DSP code in this PR)  
+**Status:** Design locked; product Measure path implemented in-app (SM-19)  
 **Date:** 2026-10-28  
-**Audience:** Product + agents planning Phase-2 Measure
+**Audience:** Product + agents — Measure pipeline contract
 
 ## Locked product algorithm (Auto → Measure)
 
@@ -239,10 +239,12 @@ Align with `docs/safety-limits.md`.
 | Safety caps on Apply | Done |
 | Agent reuse = metrics only; world-class needs human | Done |
 | SM-12 relationship | Done |
-| `sm-measure` CLI / analyzer spike | Not started (optional follow-up) |
-| Filter solver + tap host product code | Still gated (SM-12 + SM-17) |
+| `sm-measure` CLI / analyzer spike | Optional; in-app Measure covers product path |
+| In-app Measure (select mic → record → analyze → apply + persist) | **Shipped in product app (SM-19)** — simplified band analyzer, not lab FR |
+| System-wide tap host after Apply | **Shipped (SM-21)** when TCC permits |
+| Full “world-class” / unrestricted DSP go | Still gated (SM-12 listening + SM-17) |
 
-**Partial unblock:** Yes — Phase-2 may implement Measure pipeline stages against this contract. Full “world-class” claim and unrestricted DSP go remain behind listening trial + human taste.
+**Partial unblock:** Yes — product Measure stages follow this contract. Full “world-class” claim remains behind listening trial + human taste.
 
 ---
 

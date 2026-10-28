@@ -9,6 +9,12 @@ struct SpeakerMasterApp: App {
             RootView()
                 .environmentObject(model)
                 .frame(minWidth: 720, minHeight: 520)
+                .onAppear {
+                    // Demo / screenshot helper — not a product preference.
+                    if CommandLine.arguments.contains("--open-measure") {
+                        model.autoScreen = .measure
+                    }
+                }
         }
         .defaultSize(width: 840, height: 600)
         .commands {

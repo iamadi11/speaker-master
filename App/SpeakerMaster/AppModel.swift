@@ -91,28 +91,32 @@ final class AppModel: ObservableObject {
             measureNote = "Allow Microphone in System Settings, or pick Narrow."
             return
         }
+        mic.refreshDevices()
+        guard mic.selectedDeviceID != nil else {
+            statusMessage = "No mic selected"
+            measureNote = "Pick an input above, or use Narrow."
+            return
+        }
+
+        // Bypass system EQ during capture so the room hears a flat stimulus,
+        // not a previous Narrow/Measure/Custom curve (mic = room measure; tap = host).
+        let previousBypass = bypassed
+        setBypass(true)
+
         do {
-            // Flat stimulus so analysis hears the speaker/room, not our EQ.
             let capture = try await mic.recordWhilePlaying(
                 duration: 2.2,
                 player: player,
                 stimulusCurve: .flat
             )
-            let result = MeasureAnalyzer.analyze(samples: capture.samples, sampleRate: capture.sampleRate)
-            switch result.quality {
-            case .badTake:
-                activeCurve = MeasureAnalyzer.safeFallbackCurve()
-                lastSource = nil
-                statusMessage = "Bad take — stayed flat + limiter"
-                measureNote = result.notes
-                autoScreen = .pathPicker
-            case .good, .inconclusive:
-                guard let correction = result.correction else {
-                    activeCurve = MeasureAnalyzer.safeFallbackCurve()
-                    statusMessage = "Analyze failed — flat + limiter"
-                    autoScreen = .pathPicker
-                    return
-                }
+            setBypass(previousBypass)
+
+            let result = MeasureAnalyzer.analyze(
+                samples: capture.samples,
+                sampleRate: capture.sampleRate
+            )
+            switch MeasurePipeline.decision(from: result) {
+            case .apply(let correction, let notes):
                 let profile = SpeakerProfile(
                     identity: output.identity,
                     source: .measure,
@@ -121,11 +125,18 @@ final class AppModel: ObservableObject {
                 apply(profile: profile, persist: true)
                 autoScreen = .home
                 statusMessage = "Measure · Better sound is on"
-                measureNote = result.notes
+                measureNote = notes
+            case .refuse(let notes):
+                // Do not overwrite a prior good profile with a hot guess.
+                statusMessage = "Bad take — nothing new applied"
+                measureNote = notes
+                autoScreen = .measure
             }
         } catch {
+            setBypass(previousBypass)
             statusMessage = "Measure failed"
             measureNote = error.localizedDescription
+            autoScreen = .measure
         }
     }
 
