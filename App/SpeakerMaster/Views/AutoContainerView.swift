@@ -23,8 +23,8 @@ struct AutoPathPickerView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: SMTheme.spaceLG) {
+                VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
                     Text("Make this speaker sound better")
                         .font(SMTheme.titleFont)
                         .foregroundStyle(SMTheme.ink)
@@ -47,7 +47,7 @@ struct AutoPathPickerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
 
-                HStack(spacing: 16) {
+                HStack(spacing: SMTheme.spaceMD) {
                     pathCard(
                         title: "Measure",
                         subtitle: "Use a mic",
@@ -98,15 +98,14 @@ struct AutoPathPickerView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
-            .padding(22)
-            .frame(maxWidth: .infinity, minHeight: 220, alignment: .topLeading)
+            .padding(SMTheme.spaceLG)
+            .frame(maxWidth: .infinity, minHeight: 200, alignment: .topLeading)
             .background(SMTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(SMTheme.border, lineWidth: 1)
             )
-            .shadow(color: SMTheme.ink.opacity(0.04), radius: 12, y: 4)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

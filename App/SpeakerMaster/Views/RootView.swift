@@ -9,7 +9,7 @@ struct RootView: View {
             LinearGradient(
                 colors: [
                     SMTheme.background,
-                    Color(red: 0.93, green: 0.96, blue: 0.95),
+                    Color(red: 0.93, green: 0.95, blue: 0.97),
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

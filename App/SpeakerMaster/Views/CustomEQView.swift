@@ -6,89 +6,239 @@ struct CustomEQView: View {
     @State private var bands: [EQBand] = EQCurve.flat.bands
     @State private var broadband: Double = 0
     @State private var showAdvanced = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Custom")
-                        .font(SMTheme.titleFont)
-                        .foregroundStyle(SMTheme.ink)
-                    Text("Same engine as Auto. Caps from the safety sheet. Progressive depth — bands first.")
-                        .font(SMTheme.bodyFont)
-                        .foregroundStyle(SMTheme.muted)
-                }
-                Spacer()
-                BypassButton()
+        ScrollView {
+            VStack(alignment: .leading, spacing: SMTheme.spaceMD) {
+                header
+                basedOnRow
+                intentStrip
+                limiterStrip
+                bandConsole
+                broadbandRow
+                toolbarRow
+                SystemHostStatusView()
             }
+            .padding(SMTheme.spaceLG)
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: showAdvanced)
+        .onAppear(perform: syncFromModel)
+        .onChange(of: model.activeCurve) { _, _ in
+            syncFromModel()
+        }
+    }
 
-            HStack(spacing: 12) {
-                Button(model.player.isPlaying ? "Stop audition" : "Play audition") {
-                    model.toggleAudition()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(SMTheme.accent)
-
-                Button("Reset") {
-                    bands = EQCurve.flat.bands
-                    broadband = 0
-                    commit()
-                    model.resetCustom()
-                }
-                .buttonStyle(.bordered)
-
-                Toggle("Show Q / type", isOn: $showAdvanced)
-                    .toggleStyle(.switch)
-                    .frame(width: 160)
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .bottom, spacing: 18) {
-                    ForEach($bands) { $band in
-                        bandColumn(band: $band)
-                    }
-                }
-                .padding(.vertical, 8)
-            }
-            .frame(maxHeight: .infinity)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Broadband \(broadband, format: .number.precision(.fractionLength(1))) dB (≤ +\(Int(SafetyLimits.maxBroadbandBoostDb)))")
+    private var header: some View {
+        HStack(alignment: .top, spacing: SMTheme.spaceSM) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Custom")
+                    .font(SMTheme.titleFont)
+                    .foregroundStyle(SMTheme.ink)
+                Text("Pro console · same engine as Auto · safety caps enforced")
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
-                Slider(value: $broadband, in: -6...SafetyLimits.maxBroadbandBoostDb, step: 0.5) { editing in
-                    if !editing { commit() }
+            }
+            Spacer(minLength: 0)
+            BypassButton()
+        }
+    }
+
+    private var basedOnRow: some View {
+        Text(model.customBasedOnLabel)
+            .font(SMTheme.captionFont.weight(.medium))
+            .foregroundStyle(SMTheme.ink)
+            .padding(.horizontal, SMTheme.spaceSM)
+            .padding(.vertical, SMTheme.spaceXS)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(SMTheme.accentSoft)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .accessibilityLabel(model.customBasedOnLabel)
+    }
+
+    private var intentStrip: some View {
+        VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
+            Text("Quick feel")
+                .font(SMTheme.captionFont.weight(.semibold))
+                .foregroundStyle(SMTheme.muted)
+            HStack(spacing: SMTheme.spaceXS) {
+                ForEach(CustomIntentCatalog.all) { intent in
+                    let selected = model.matchedCustomIntentID == intent.id
+                    Button {
+                        model.applyCustomIntent(intent)
+                        syncFromModel()
+                    } label: {
+                        Text(intent.title)
+                            .font(SMTheme.captionFont.weight(.semibold))
+                            .foregroundStyle(selected ? Color.white : SMTheme.ink)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(minHeight: 36)
+                            .background(selected ? SMTheme.accent : SMTheme.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(
+                                        selected ? SMTheme.accent : SMTheme.border,
+                                        lineWidth: 1
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(intent.title)
+                    .accessibilityHint(intent.summary)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                    .help(intent.summary)
                 }
-                .tint(SMTheme.accent)
-                .onChange(of: broadband) { _, _ in
-                    // Live preview while dragging
-                    preview()
-                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var limiterStrip: some View {
+        HStack(spacing: SMTheme.spaceSM) {
+            Image(systemName: "shield.checkered")
+                .foregroundStyle(SMTheme.accent)
+                .accessibilityHidden(true)
+            Text("Limiter on · boosts capped (band ≤ +\(Int(SafetyLimits.maxPerBandBoostDb)) dB · bass ≤ +\(Int(SafetyLimits.maxBassBoostDb)) · broadband ≤ +\(Int(SafetyLimits.maxBroadbandBoostDb)))")
+                .font(SMTheme.captionFont)
+                .foregroundStyle(SMTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(SMTheme.spaceSM)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SMTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(SMTheme.border, lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Limiter on, safety caps active")
+    }
+
+    private var bandConsole: some View {
+        VStack(alignment: .leading, spacing: SMTheme.spaceXS) {
+            HStack {
+                Text("Tone bands")
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(SMTheme.muted)
+                Spacer()
+                Toggle("Q / type", isOn: $showAdvanced)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+                    .accessibilityLabel("Show Q and filter type")
+                Text("Q / type")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
             }
 
-            SystemHostStatusView()
+            magnitudePreview
 
-            Text("Limiter stays on. Expert overrides above Auto caps are not enabled in v1.")
+            HStack(alignment: .bottom, spacing: 8) {
+                ForEach($bands) { $band in
+                    bandColumn(band: $band)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .padding(SMTheme.spaceSM)
+        .background(SMTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(SMTheme.border, lineWidth: 1)
+        )
+    }
+
+    private var magnitudePreview: some View {
+        let freqs: [Double] = [60, 120, 250, 500, 1000, 2000, 4000, 8000, 12000]
+        let curve = EQCurve(bands: bands, broadbandGainDb: broadband, bypassed: false).sanitized()
+        return HStack(alignment: .bottom, spacing: 3) {
+            ForEach(freqs, id: \.self) { hz in
+                let mag = curve.approximateMagnitudeDb(atFrequencyHz: hz, sampleRate: 48_000)
+                let height = min(36, max(4, 18 + mag * 3))
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(mag >= 0 ? SMTheme.accent.opacity(0.75) : SMTheme.muted.opacity(0.45))
+                    .frame(width: 14, height: height)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Approximate EQ shape preview")
+    }
+
+    private var broadbandRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Broadband")
+                    .font(SMTheme.captionFont.weight(.semibold))
+                    .foregroundStyle(SMTheme.muted)
+                Spacer()
+                Text("\(broadband, format: .number.precision(.fractionLength(1))) dB")
+                    .font(SMTheme.monoCaption)
+                    .foregroundStyle(SMTheme.ink)
+            }
+            Slider(value: $broadband, in: -6...SafetyLimits.maxBroadbandBoostDb, step: 0.5) { editing in
+                if !editing { commit() }
+            }
+            .tint(SMTheme.accent)
+            .onChange(of: broadband) { _, _ in
+                preview()
+            }
+            Text("≤ +\(Int(SafetyLimits.maxBroadbandBoostDb)) dB safety ceiling")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.muted)
         }
-        .padding(28)
-        .onAppear {
-            bands = model.activeCurve.bands
-            broadband = model.activeCurve.broadbandGainDb
+    }
+
+    private var toolbarRow: some View {
+        HStack(spacing: SMTheme.spaceXS) {
+            Button(model.player.isPlaying ? "Stop" : "Audition") {
+                model.toggleAudition()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(SMTheme.accent)
+            .frame(minHeight: 36)
+
+            Button("Undo") {
+                model.undoCustom()
+                syncFromModel()
+            }
+            .buttonStyle(.bordered)
+            .disabled(!model.customCanUndo)
+            .frame(minHeight: 36)
+
+            Button("Reset to Auto") {
+                model.resetCustomToAuto()
+                syncFromModel()
+            }
+            .buttonStyle(.bordered)
+            .frame(minHeight: 36)
+            .help("Restore the last Auto Measure or Narrow curve")
+
+            Button("Flat") {
+                model.resetCustom()
+                syncFromModel()
+            }
+            .buttonStyle(.bordered)
+            .frame(minHeight: 36)
+
+            Spacer(minLength: 0)
         }
     }
 
     private func bandColumn(band: Binding<EQBand>) -> some View {
         let maxBoost = SafetyLimits.maxBandBoostDb(frequencyHz: band.wrappedValue.frequencyHz)
-        return VStack(spacing: 8) {
+        return VStack(spacing: 4) {
             Text(formatHz(band.wrappedValue.frequencyHz))
                 .font(SMTheme.captionFont.weight(.semibold))
                 .foregroundStyle(SMTheme.ink)
-            Text(String(format: "%+.1f dB", band.wrappedValue.gainDb))
-                .font(SMTheme.captionFont)
+            Text(String(format: "%+.1f", band.wrappedValue.gainDb))
+                .font(SMTheme.monoCaption)
                 .foregroundStyle(SMTheme.muted)
-                .monospacedDigit()
 
             Slider(value: Binding(
                 get: { band.wrappedValue.gainDb },
@@ -102,10 +252,9 @@ struct CustomEQView: View {
             ), in: -18...maxBoost, step: 0.5) { editing in
                 if !editing { commit() }
             }
-            .frame(width: 36, height: 180)
-            // Vertical feel via rotation
+            .frame(width: 28, height: 140)
             .rotationEffect(.degrees(-90))
-            .frame(width: 72, height: 200)
+            .frame(width: 56, height: 150)
 
             if showAdvanced {
                 Slider(value: Binding(
@@ -117,19 +266,29 @@ struct CustomEQView: View {
                 ), in: 0.3...4, step: 0.1) { editing in
                     if !editing { commit() }
                 }
-                .frame(width: 72)
+                .frame(width: 56)
                 Text("Q \(band.wrappedValue.q, format: .number.precision(.fractionLength(1)))")
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
+
+                Picker("Type", selection: Binding(
+                    get: { band.wrappedValue.type },
+                    set: {
+                        band.wrappedValue.type = $0
+                        commit()
+                    }
+                )) {
+                    Text("Peak").tag(EQBand.FilterType.peaking)
+                    Text("LS").tag(EQBand.FilterType.lowShelf)
+                    Text("HS").tag(EQBand.FilterType.highShelf)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 64)
+                .accessibilityLabel("Filter type")
             }
         }
-        .padding(10)
-        .background(SMTheme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(SMTheme.border, lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(formatHz(band.wrappedValue.frequencyHz)) band")
     }
@@ -138,7 +297,12 @@ struct CustomEQView: View {
         if hz >= 1000 {
             return String(format: "%.1fk", hz / 1000)
         }
-        return "\(Int(hz)) Hz"
+        return "\(Int(hz))"
+    }
+
+    private func syncFromModel() {
+        bands = model.activeCurve.bands
+        broadband = model.activeCurve.broadbandGainDb
     }
 
     private func preview() {
