@@ -63,17 +63,19 @@ Auto stays sacred: Custom never replaces the one-run Auto home.
 
 Toddler-simple primary path. Zero sliders by default.
 
+**Product algorithm (locked):** (1) **temporarily record** from the mic the user selects → (2) **analyze** that recording → (3) **apply** the **best safe** Auto EQ configuration for this speaker (cut-first, within `safety-limits.md`, limiter on). Full contract: `docs/agent-measure-loop.md`. Process taps host system-wide playback after Apply; they do not replace the mic as the Measure input.
+
 ### 2.1 Steps
 
-| Step | User sees | User does | System |
-|---|---|---|---|
-| **M0 Permissions** | Why mic + system audio are needed (plain language) | Allow when macOS prompts | `NSMicrophone…` + audio capture TCC |
-| **M1 Mic picker** | List of **available inputs** (built-in, USB measurement mic, Continuity/iPhone mic if present, etc.) | Select one | Remember last choice; never force USB-only |
-| **M2 Place** | Diagram: Mac/mic toward speaker, quiet room, typical listen seat | Put gear there → Continue | — |
-| **M3 Level** | Simple meter + “comfortable volume” | Set Mac/speaker volume | Abort if input clips hard |
-| **M4 Sweep** | Big Play → progress (“Listening…”) | Wait; don’t talk | Play sweep / noise sequence out selected output |
-| **M5 Build** | “Making filters…” | Wait | Cut-first correction within `safety-limits.md` |
-| **M6 Done** | “Better sound is on” + **Hold to hear before** | Optional A/B; Done | Persist per output UID; limiter on |
+| Step | Pipeline | User sees | User does | System |
+|---|---|---|---|---|
+| **M0 Permissions** | prep | Why mic + system audio are needed (plain language) | Allow when macOS prompts | `NSMicrophone…` + audio capture TCC |
+| **M1 Mic picker** | record prep | List of **available inputs** (built-in, USB measurement mic, Continuity/iPhone mic if present, etc.) | Select one | Remember last choice; never force USB-only |
+| **M2 Place** | record prep | Diagram: Mac/mic toward speaker, quiet room, typical listen seat | Put gear there → Continue | — |
+| **M3 Level** | record prep | Simple meter + “comfortable volume” | Set Mac/speaker volume | Abort if input clips hard |
+| **M4 Sweep** | **1. Record** | Big Play → progress (“Listening…”) | Wait; don’t talk | Play stimulus; **temporary mic capture**; delete temp after analyze |
+| **M5 Build** | **2. Analyze → 3. Apply** | “Making filters…” | Wait | Analyze take; apply **best-within-caps** cut-first Auto EQ; limiter on |
+| **M6 Done** | applied | “Better sound is on” + **Hold to hear before** | Optional A/B; Done | Persist per output UID |
 
 ### 2.2 Mic picker (detail)
 
