@@ -12,9 +12,9 @@ Searchable local UI/UX guidance: 79 searchable styles (50 active), 192 product p
 This repo vendors **macOS-native** design skills. For Speaker Master UI:
 
 1. Load **`macos-design`**, **`macos-patterns`**, **`apple-design`** first (modern minimal, sparse chrome, HIG materials).
-2. Load **`ux-journey-pm`** for first-launch → permissions → Auto → Custom → System EQ.
+2. Load **`ux-journey-pm`** (incl. `references/screen-states.md` + `anti-patterns.md`) for first-launch → permissions → Auto → Custom → System EQ.
 3. Use **this skill** for accessibility, interaction timing, and checklist support — **not** to impose teal-dense “pro console” or web-dashboard layouts.
-4. If this skill’s palette/density guidance conflicts with macOS skills or `AGENTS.md` visual bar, **defer to macOS skills**.
+4. If this skill’s palette/density guidance conflicts with macOS skills or `AGENTS.md` visual bar, **defer to macOS skills**. Journey/copy/state conflicts → **defer to `ux-journey-pm`**.
 
 ## When to Apply
 
