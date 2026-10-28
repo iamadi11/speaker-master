@@ -57,7 +57,11 @@ struct CustomEQView: View {
             Text("Quick feel")
                 .font(SMTheme.captionFont.weight(.semibold))
                 .foregroundStyle(SMTheme.muted)
-            HStack(spacing: SMTheme.spaceXS) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 96), spacing: SMTheme.spaceXS)],
+                alignment: .leading,
+                spacing: SMTheme.spaceXS
+            ) {
                 ForEach(CustomIntentCatalog.all) { intent in
                     let selected = model.matchedCustomIntentID == intent.id
                     Button {
@@ -69,7 +73,7 @@ struct CustomEQView: View {
                             .foregroundStyle(selected ? Color.white : SMTheme.ink)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
-                            .frame(minHeight: 36)
+                            .frame(maxWidth: .infinity, minHeight: 36)
                             .background(selected ? SMTheme.accent : SMTheme.surface)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             .overlay(
@@ -86,20 +90,31 @@ struct CustomEQView: View {
                     .accessibilityAddTraits(selected ? .isSelected : [])
                     .help(intent.summary)
                 }
-                Spacer(minLength: 0)
             }
         }
     }
 
     private var limiterStrip: some View {
-        HStack(spacing: SMTheme.spaceSM) {
-            Image(systemName: "shield.checkered")
-                .foregroundStyle(SMTheme.accent)
+        let live = EQCurve(bands: bands, broadbandGainDb: broadband, bypassed: false).sanitized()
+        let headroom = live.constructiveHeadroomDb()
+        let nearCap = headroom < 1.0
+        return HStack(alignment: .top, spacing: SMTheme.spaceSM) {
+            Image(systemName: nearCap ? "shield.lefthalf.filled" : "shield.checkered")
+                .foregroundStyle(nearCap ? SMTheme.warning : SMTheme.accent)
                 .accessibilityHidden(true)
-            Text("Limiter on · boosts capped (band ≤ +\(Int(SafetyLimits.maxPerBandBoostDb)) dB · bass ≤ +\(Int(SafetyLimits.maxBassBoostDb)) · broadband ≤ +\(Int(SafetyLimits.maxBroadbandBoostDb)))")
-                .font(SMTheme.captionFont)
-                .foregroundStyle(SMTheme.muted)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Limiter on · boosts capped (band ≤ +\(Int(SafetyLimits.maxPerBandBoostDb)) dB · bass ≤ +\(Int(SafetyLimits.maxBassBoostDb)) · broadband ≤ +\(Int(SafetyLimits.maxBroadbandBoostDb)) · total ≤ +\(Int(SafetyLimits.maxTotalConstructiveGainDb)))")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    nearCap
+                        ? String(format: "Constructive headroom %.1f dB — further boosts scale under the ceiling", max(0, headroom))
+                        : String(format: "Constructive headroom %.1f dB", headroom)
+                )
+                .font(SMTheme.captionFont.weight(.medium))
+                .foregroundStyle(nearCap ? SMTheme.warning : SMTheme.ink)
+            }
             Spacer(minLength: 0)
         }
         .padding(SMTheme.spaceSM)
@@ -108,10 +123,14 @@ struct CustomEQView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(SMTheme.border, lineWidth: 1)
+                .strokeBorder(nearCap ? SMTheme.warning.opacity(0.55) : SMTheme.border, lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Limiter on, safety caps active")
+        .accessibilityLabel(
+            nearCap
+                ? "Limiter on, near total constructive ceiling"
+                : "Limiter on, safety caps active"
+        )
     }
 
     private var bandConsole: some View {
@@ -291,6 +310,8 @@ struct CustomEQView: View {
                 .tint(atCap ? SMTheme.warning : SMTheme.accent)
                 .frame(width: 28, height: 140)
                 .rotationEffect(.degrees(-90))
+                .accessibilityLabel("Gain")
+                .accessibilityValue(String(format: "%.1f dB", band.wrappedValue.gainDb))
             }
             .frame(width: 56, height: 150)
             .onTapGesture(count: 2) {
@@ -299,7 +320,55 @@ struct CustomEQView: View {
             }
             .help("Double-click to zero this band")
 
+            // Single-pointer alternative to the rotated drag fader (WCAG 2.2).
+            HStack(spacing: 4) {
+                Button {
+                    nudgeGain(band, by: -0.5)
+                } label: {
+                    Image(systemName: "minus")
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .background(SMTheme.border.opacity(0.45))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .accessibilityLabel("Decrease \(formatHz(band.wrappedValue.frequencyHz)) gain")
+
+                Button {
+                    nudgeGain(band, by: 0.5)
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .background(SMTheme.border.opacity(0.45))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .accessibilityLabel("Increase \(formatHz(band.wrappedValue.frequencyHz)) gain")
+            }
+
             if showAdvanced {
+                Text("Hz")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
+                Slider(value: Binding(
+                    get: { log2(max(40, band.wrappedValue.frequencyHz)) },
+                    set: { logValue in
+                        let hz = pow(2.0, logValue)
+                        band.wrappedValue.frequencyHz = min(16_000, max(40, hz))
+                        band.wrappedValue.gainDb = SafetyLimits.clampBandGain(
+                            band.wrappedValue.gainDb,
+                            frequencyHz: band.wrappedValue.frequencyHz
+                        )
+                        preview()
+                    }
+                ), in: log2(40)...log2(16_000)) { editing in
+                    if !editing { commit() }
+                }
+                .frame(width: 56)
+                .accessibilityLabel("Center frequency")
+                .accessibilityValue(formatHz(band.wrappedValue.frequencyHz))
+
                 Slider(value: Binding(
                     get: { band.wrappedValue.q },
                     set: {
@@ -338,7 +407,17 @@ struct CustomEQView: View {
                 ? "\(formatHz(band.wrappedValue.frequencyHz)) band, at safety cap"
                 : "\(formatHz(band.wrappedValue.frequencyHz)) band"
         )
-        .accessibilityHint("Double-click fader to zero")
+        .accessibilityHint("Use plus or minus, or double-click fader to zero")
+    }
+
+    private func nudgeGain(_ band: Binding<EQBand>, by delta: Double) {
+        let maxBoost = SafetyLimits.maxBandBoostDb(frequencyHz: band.wrappedValue.frequencyHz)
+        let next = min(maxBoost, max(-18, band.wrappedValue.gainDb + delta))
+        band.wrappedValue.gainDb = SafetyLimits.clampBandGain(
+            next,
+            frequencyHz: band.wrappedValue.frequencyHz
+        )
+        commit()
     }
 
     private func formatHz(_ hz: Double) -> String {
