@@ -93,18 +93,15 @@ final class MicRecorder: ObservableObject {
         refreshDevices()
     }
 
+    /// Re-read HAL inputs and clamp selection to a live UID.
     func refreshDevices() {
-        let list = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.microphone, .external],
-            mediaType: .audio,
-            position: .unspecified
-        ).devices.map { MicDevice(id: $0.uniqueID, name: $0.localizedName) }
+        let list = MicInputCatalog.listInputs()
         devices = list
 
         let remembered = UserDefaults.standard.string(forKey: Self.lastMicKey)
         if let remembered, list.contains(where: { $0.id == remembered }) {
             selectedDeviceID = remembered
-        } else if let selectedDeviceID, list.contains(where: { $0.id == selectedDeviceID }) {
+        } else if let current = selectedDeviceID, list.contains(where: { $0.id == current }) {
             // keep current selection
         } else {
             selectedDeviceID = list.first?.id
@@ -115,7 +112,13 @@ final class MicRecorder: ObservableObject {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         if status == .authorized {
             permission = status
+            refreshDevices()
             return true
+        }
+        if status == .denied || status == .restricted {
+            permission = status
+            refreshDevices()
+            return false
         }
         let granted = await AVCaptureDevice.requestAccess(for: .audio)
         permission = AVCaptureDevice.authorizationStatus(for: .audio)

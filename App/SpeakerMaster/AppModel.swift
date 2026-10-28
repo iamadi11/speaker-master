@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SpeakerMaster
 import SwiftUI
@@ -39,9 +40,23 @@ final class AppModel: ObservableObject {
     let profiles: SpeakerProfileStore
 
     private let persistence = NarrowPersistencePolicy()
+    private var cancellables = Set<AnyCancellable>()
 
     init(profiles: SpeakerProfileStore = UserDefaultsProfileStore()) {
         self.profiles = profiles
+        // Nested ObservableObjects do not invalidate EnvironmentObject views on their own.
+        mic.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        output.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        player.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        systemHost.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
         restoreIfPossible()
     }
 

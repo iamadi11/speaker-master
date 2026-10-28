@@ -1,3 +1,5 @@
+import AppKit
+import AVFoundation
 import SpeakerMaster
 import SwiftUI
 
@@ -31,26 +33,15 @@ struct MeasureFlowView: View {
                     Text("1 · Microphone")
                         .font(SMTheme.captionFont.weight(.semibold))
                         .foregroundStyle(SMTheme.muted)
-                    if model.mic.devices.isEmpty {
-                        Text("No mics found. Grant Microphone access in System Settings, then Refresh — or use Narrow.")
-                            .foregroundStyle(SMTheme.danger)
-                            .accessibilityLabel("No microphones found")
-                    } else {
-                        Picker("Input", selection: Binding(
-                            get: { model.mic.selectedDeviceID ?? "" },
-                            set: { model.mic.selectedDeviceID = $0 }
-                        )) {
-                            ForEach(model.mic.devices) { device in
-                                Text(device.name).tag(device.id)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .accessibilityLabel("Microphone input")
-                    }
+
+                    micPickerSection
+
                     HStack {
-                        Button("Refresh list") { model.mic.refreshDevices() }
-                            .buttonStyle(.bordered)
-                            .accessibilityHint("Rescan available microphones")
+                        Button("Refresh list") {
+                            model.mic.refreshDevices()
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityHint("Rescan available microphones")
                         Text("Built-in OK for a first pass · last choice remembered")
                             .font(SMTheme.captionFont)
                             .foregroundStyle(SMTheme.muted)
@@ -106,7 +97,7 @@ struct MeasureFlowView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(SMTheme.accent)
-                    .disabled(running || model.mic.devices.isEmpty)
+                    .disabled(running || model.mic.devices.isEmpty || model.mic.selectedDeviceID == nil)
                     .frame(minHeight: 44)
                     .accessibilityHint("Plays a short sweep, records the selected mic, then applies safe Auto EQ")
 
@@ -129,6 +120,86 @@ struct MeasureFlowView: View {
         .task {
             _ = await model.mic.requestPermission()
             model.mic.refreshDevices()
+        }
+    }
+
+    @ViewBuilder
+    private var micPickerSection: some View {
+        let devices = model.mic.devices
+        let permission = model.mic.permission
+
+        if devices.isEmpty {
+            emptyMicState(permission: permission)
+        } else {
+            // Explicit radio list — macOS Menu Picker with a mismatched tag rendered blank
+            // (looked like “no mics” even when HAL had devices + TCC was granted).
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(devices) { device in
+                    Button {
+                        model.mic.selectedDeviceID = device.id
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: device.id == model.mic.selectedDeviceID
+                                  ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(
+                                    device.id == model.mic.selectedDeviceID
+                                    ? SMTheme.accent : SMTheme.muted
+                                )
+                                .accessibilityHidden(true)
+                            Text(device.name)
+                                .font(SMTheme.bodyFont)
+                                .foregroundStyle(SMTheme.ink)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .accessibilityLabel(device.name)
+                    .accessibilityAddTraits(device.id == model.mic.selectedDeviceID ? .isSelected : [])
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Microphone input")
+        }
+    }
+
+    @ViewBuilder
+    private func emptyMicState(permission: AVAuthorizationStatus) -> some View {
+        switch permission {
+        case .denied, .restricted:
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Grant Microphone in System Settings")
+                    .foregroundStyle(SMTheme.danger)
+                    .accessibilityLabel("Grant Microphone in System Settings")
+                Text("Speaker Master is listed under Privacy & Security → Microphone. Turn it on, then Refresh.")
+                    .font(SMTheme.captionFont)
+                    .foregroundStyle(SMTheme.muted)
+                Button("Open Microphone settings") {
+                    openMicrophoneSettings()
+                }
+                .buttonStyle(.bordered)
+            }
+        case .notDetermined:
+            Text("Allow Microphone when prompted, then this list fills with Built-in and other inputs.")
+                .foregroundStyle(SMTheme.muted)
+        default:
+            Text("No input devices found. Plug in a mic or enable Built-in, then Refresh — or use Narrow.")
+                .foregroundStyle(SMTheme.danger)
+                .accessibilityLabel("No microphones found")
+        }
+    }
+
+    private func openMicrophoneSettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+            "x-apple.systempreferences:com.apple.Settings.PrivacySecurity.extension?Privacy_Microphone",
+        ]
+        for raw in candidates {
+            if let url = URL(string: raw), NSWorkspace.shared.open(url) {
+                return
+            }
         }
     }
 
