@@ -67,13 +67,8 @@ enum MicInputCatalog {
                 deviceID,
                 kAudioObjectPropertyName
             ) ?? uid
-            let transport = CoreAudioDeviceLookup.transportType(for: deviceID)
             let device = MicDevice(id: uid, name: name)
-            guard isMeasureMicCandidate(
-                device,
-                transport: transport,
-                outputTwinBases: outputTwinBases
-            ) else { continue }
+            guard isMeasureMicCandidate(device, outputTwinBases: outputTwinBases) else { continue }
 
             result.append(device)
         }
@@ -81,10 +76,9 @@ enum MicInputCatalog {
         return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    /// Keep Built-in / Continuity / headset mics; drop Bluetooth speaker playback twins.
+    /// Keep Built-in / Continuity / headset mics; drop speaker playback `:input` twins.
     static func isMeasureMicCandidate(
         _ device: MicDevice,
-        transport: UInt32,
         outputTwinBases: Set<String>
     ) -> Bool {
         let name = device.name.lowercased()
@@ -105,16 +99,11 @@ enum MicInputCatalog {
             return true
         }
 
-        // Bluetooth (or similar) speaker I/O pair: `MAC:input` beside `MAC:output`.
-        // These are not room mics — Measure on them yields empty/weak takes.
+        // I/O pair: `MAC:input` beside `MAC:output` (e.g. ULT FIELD 1). Not a room mic —
+        // Measure on these yields empty/weak takes. Headset/AirPods already returned above.
         if uid.hasSuffix(":input") {
             let base = String(uid.dropLast(":input".count))
-            if outputTwinBases.contains(base) {
-                let isBluetooth = transport == kAudioDeviceTransportTypeBluetooth
-                    || transport == kAudioDeviceTransportTypeBluetoothLE
-                    || transport == 0 // unknown — still exclude twin inputs without mic tokens
-                if isBluetooth { return false }
-            }
+            if outputTwinBases.contains(base) { return false }
         }
 
         return true
