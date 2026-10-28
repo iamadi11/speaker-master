@@ -1,7 +1,20 @@
-# App target (stub)
+# Speaker Master (macOS app)
 
-Xcode macOS app target will live here. System-wide EQ via Core Audio process taps.
+SwiftUI + Core Audio app target. Domain DSP lives in the SPM package at repo root.
 
-For now, the product identity and testable domain code live in the SPM package at the repo root (`Package.swift` → `SpeakerMaster`).
+## Generate & build
 
-Personal install: `Scripts/install-personal.sh` (after green verify). Until an `.app` bundle exists, the script exits with a clear message.
+```bash
+cd App
+xcodegen generate
+xcodebuild -project SpeakerMaster.xcodeproj -scheme SpeakerMaster -configuration Debug -derivedDataPath ../build build
+```
+
+Or from repo root: `Scripts/build-app.sh`
+
+## Permissions
+
+- Microphone — Auto Measure
+- Screen & System Audio Recording — future system-wide process tap (v1 ships in-app audition host)
+
+Personal install: `Scripts/install-personal.sh` after green verify.

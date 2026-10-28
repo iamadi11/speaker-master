@@ -11,6 +11,7 @@ swift test --package-path .
 APP_CANDIDATES=(
   "$ROOT/build/Build/Products/Debug/SpeakerMaster.app"
   "$ROOT/DerivedData/Build/Products/Debug/SpeakerMaster.app"
+  "$ROOT/App/build/Build/Products/Debug/SpeakerMaster.app"
   "$ROOT/App/SpeakerMaster/build/Debug/SpeakerMaster.app"
 )
 
@@ -23,9 +24,14 @@ for candidate in "${APP_CANDIDATES[@]}"; do
 done
 
 if [[ -z "$APP" ]]; then
-  echo "No .app bundle yet (scaffold stage). Domain package verified."
-  echo "When the Xcode app target exists, build it then re-run this script."
-  exit 0
+  echo "==> No .app yet — building"
+  "$ROOT/Scripts/build-app.sh"
+  APP="$ROOT/build/Build/Products/Debug/SpeakerMaster.app"
+fi
+
+if [[ ! -d "$APP" ]]; then
+  echo "SpeakerMaster.app missing after build" >&2
+  exit 1
 fi
 
 echo "==> Ad-hoc sign (free / personal)"
@@ -37,3 +43,4 @@ rm -rf "$DEST"
 cp -R "$APP" "$DEST"
 echo "Installed: $DEST"
 echo "Open with: open \"$DEST\""
+open "$DEST"
