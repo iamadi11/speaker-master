@@ -54,6 +54,17 @@ struct MeasureFlowView: View {
 
                     micPickerSection
 
+                    if model.mic.selectedDeviceLooksLikeContinuity {
+                        Label(
+                            "Continuity / iPhone mics often return silence — Built-in is more reliable for Measure.",
+                            systemImage: "exclamationmark.triangle"
+                        )
+                        .font(SMTheme.captionFont)
+                        .foregroundStyle(SMTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel("Continuity mic may fail Measure. Prefer Built-in.")
+                    }
+
                     HStack {
                         Button("Refresh list") {
                             Task {
@@ -63,7 +74,7 @@ struct MeasureFlowView: View {
                         }
                         .smBorderedButton()
                         .accessibilityHint("Rescan available microphones")
-                        Text("Built-in OK for a first pass · last choice remembered")
+                        Text("Built-in preferred · local mics remembered · Continuity is session-only")
                             .font(SMTheme.captionFont)
                             .foregroundStyle(SMTheme.muted)
                     }

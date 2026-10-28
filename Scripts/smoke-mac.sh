@@ -70,6 +70,11 @@ if [[ "$MODE" == "measure" || "$MODE" == "full" ]]; then
     echo "dump-mics lists a speaker :input twin as a Measure mic" >&2
     exit 1
   fi
+  # Continuity must not stick as default when Built-in exists (SM-33).
+  if grep -q 'mic_fail=continuity_sticky' /tmp/speaker-master-dump-mics.out; then
+    echo "dump-mics: Continuity mic stuck as default over Built-in" >&2
+    exit 1
+  fi
 fi
 
 # Narrow / Custom / Bypass / audition without Microphone TCC

@@ -41,9 +41,7 @@ final class MicRecorder: ObservableObject {
     @Published private(set) var devices: [MicDevice] = []
     @Published var selectedDeviceID: String? {
         didSet {
-            if let selectedDeviceID {
-                UserDefaults.standard.set(selectedDeviceID, forKey: Self.lastMicKey)
-            }
+            persistLastMicIfAppropriate(selectedDeviceID)
         }
     }
     @Published private(set) var permission: AVAuthorizationStatus = .notDetermined
@@ -57,50 +55,85 @@ final class MicRecorder: ObservableObject {
     }
 
     /// Re-read HAL inputs and clamp selection to a live UID.
+    /// Continuity is never sticky across launches when a local mic exists.
     func refreshDevices() {
         let list = MicInputCatalog.listInputs()
         devices = list
 
         let remembered = UserDefaults.standard.string(forKey: Self.lastMicKey)
-        if let remembered, list.contains(where: { $0.id == remembered }) {
-            selectedDeviceID = remembered
-        } else if let current = selectedDeviceID, list.contains(where: { $0.id == current }) {
-            // keep current selection
-        } else {
-            selectedDeviceID = Self.preferredInputID(from: list)
+        // Drop legacy Continuity sticky defaults so Built-in wins on next launch.
+        if let remembered,
+           let name = list.first(where: { $0.id == remembered })?.name,
+           !MicSelectionPolicy.shouldPersistAsLastMic(name: name)
+        {
+            UserDefaults.standard.removeObject(forKey: Self.lastMicKey)
         }
+
+        let policyDevices = list.map { MicSelectionPolicy.Device(id: $0.id, name: $0.name) }
+        selectedDeviceID = MicSelectionPolicy.resolveSelection(
+            devices: policyDevices,
+            rememberedID: UserDefaults.standard.string(forKey: Self.lastMicKey),
+            currentID: selectedDeviceID
+        )
     }
 
     /// Prefer a local Mac mic over Continuity/iPhone for first-run Measure reliability.
     static func preferredInputID(from list: [MicDevice]) -> String? {
-        if let builtIn = list.first(where: { $0.id == "BuiltInMicrophoneDevice" }) {
-            return builtIn.id
-        }
-        if let macBook = list.first(where: {
-            let name = $0.name.lowercased()
-            return name.contains("macbook") && name.contains("microphone")
-        }) {
-            return macBook.id
-        }
-        // Continuity last — often empty buffers in automated / first-pass Measure.
-        if let local = list.first(where: { !looksLikeContinuityMic($0) }) {
-            return local.id
-        }
-        return list.first?.id
+        MicSelectionPolicy.preferredInputID(
+            from: list.map { MicSelectionPolicy.Device(id: $0.id, name: $0.name) }
+        )
     }
 
     static func looksLikeContinuityMic(_ device: MicDevice) -> Bool {
-        let name = device.name.lowercased()
-        return name.contains("iphone") || name.contains("ipad") || name.contains("continuity")
+        MicSelectionPolicy.looksLikeContinuityMic(name: device.name)
     }
 
-    /// Smoke / recovery helper — select Built-in when present.
+    var selectedDeviceLooksLikeContinuity: Bool {
+        guard let id = selectedDeviceID,
+              let device = devices.first(where: { $0.id == id })
+        else { return false }
+        return Self.looksLikeContinuityMic(device)
+    }
+
+    /// Smoke / recovery helper — select Built-in when present; clear Continuity sticky.
     func preferBuiltInMicrophoneIfAvailable() {
+        clearStickyContinuityDefault()
         if let builtIn = devices.first(where: { $0.id == "BuiltInMicrophoneDevice" }) {
             selectedDeviceID = builtIn.id
         } else if let preferred = Self.preferredInputID(from: devices) {
             selectedDeviceID = preferred
         }
+    }
+
+    /// After Continuity empty capture — snap to Built-in and forget Continuity sticky.
+    func recoverFromContinuityEmptyCapture() {
+        preferBuiltInMicrophoneIfAvailable()
+    }
+
+    private func clearStickyContinuityDefault() {
+        guard let remembered = UserDefaults.standard.string(forKey: Self.lastMicKey) else { return }
+        if let name = devices.first(where: { $0.id == remembered })?.name,
+           !MicSelectionPolicy.shouldPersistAsLastMic(name: name)
+        {
+            UserDefaults.standard.removeObject(forKey: Self.lastMicKey)
+            return
+        }
+        // Legacy sticky Continuity UID may not be in the live list anymore.
+        if remembered.lowercased().contains("iphone")
+            || remembered.lowercased().contains("ipad")
+            || remembered.lowercased().contains("continuity")
+        {
+            UserDefaults.standard.removeObject(forKey: Self.lastMicKey)
+        }
+    }
+
+    private func persistLastMicIfAppropriate(_ uid: String?) {
+        guard let uid else { return }
+        let name = devices.first(where: { $0.id == uid })?.name ?? uid
+        if MicSelectionPolicy.shouldPersistAsLastMic(name: name) {
+            UserDefaults.standard.set(uid, forKey: Self.lastMicKey)
+        }
+        // Continuity: session-only — do not write sticky default.
     }
 
     /// Prefer `AVAudioApplication` (HAL / AVAudioEngine record path) and keep
