@@ -77,8 +77,7 @@ struct SpeakerMasterApp: App {
 
             // Narrow: apply suggested preset, persist, restore
             let suggestedID = NarrowCatalog.suggestedPresetID(deviceName: outName)
-                ?? NarrowCatalog.all.first?.id
-            guard let suggestedID, let preset = NarrowCatalog.preset(id: suggestedID) else {
+            guard let preset = NarrowCatalog.preset(id: suggestedID) else {
                 check("narrow_apply", false, "no_preset")
                 exit(1)
             }
@@ -103,7 +102,19 @@ struct SpeakerMasterApp: App {
             // Re-apply so Custom / audition run against a live curve
             model.applyNarrow(preset: preset)
 
-            // Custom: band edit + reset
+            // Custom: named intent → undo → band edit → reset flat → reset to Auto
+            let warmer = CustomIntentCatalog.intent(id: "warmer")!
+            model.applyCustomIntent(warmer)
+            check(
+                "custom_intent",
+                model.matchedCustomIntentID == "warmer" && model.customCanUndo,
+                "id=warmer"
+            )
+            model.undoCustom()
+            check(
+                "custom_undo",
+                model.lastNarrowPresetID == preset.id && model.activeCurve == preset.curve.sanitized()
+            )
             var custom = EQCurve.flat
             if var band = custom.bands.first {
                 band.gainDb = 3
@@ -113,6 +124,12 @@ struct SpeakerMasterApp: App {
             check("custom_edit", model.lastSource == .custom && model.activeCurve.bands[0].gainDb == 3)
             model.resetCustom()
             check("custom_reset", abs(model.activeCurve.bands[0].gainDb) < 0.01)
+            model.updateCustom(custom)
+            model.resetCustomToAuto()
+            check(
+                "custom_reset_auto",
+                model.activeCurve == preset.curve.sanitized() && !model.customCanUndo
+            )
 
             // Bypass A/B + audition noise
             model.setBypass(true)
