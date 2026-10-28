@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-MODE="${1:-full}" # audition | measure | full
+MODE="${1:-full}" # audition | measure | full | nonmic
 HOLD_PAD_SEC="${SMOKE_HOLD_PAD_SEC:-2}"
 
 pkill -x SpeakerMaster 2>/dev/null || true
@@ -33,14 +33,57 @@ case "$MODE" in
   audition) ARGS=(--smoke-audition) ;;
   measure)  ARGS=(--smoke-measure) ;;
   full)     ARGS=(--smoke-full) ;;
-  *) echo "usage: $0 [audition|measure|full]" >&2; exit 2 ;;
+  nonmic)   ARGS=(--qa-nonmic) ;;
+  *) echo "usage: $0 [audition|measure|full|nonmic]" >&2; exit 2 ;;
 esac
+
+# Mic catalog gate (empty-picker regression). HAL list must be non-empty on this Mac.
+if [[ "$MODE" == "measure" || "$MODE" == "full" ]]; then
+  echo "==> dump-mics gate"
+  set +e
+  "$BIN" --dump-mics >/tmp/speaker-master-dump-mics.out 2>&1
+  DUMP_EC=$?
+  set -e
+  cat /tmp/speaker-master-dump-mics.out || true
+  if [[ "$DUMP_EC" -ne 0 ]]; then
+    echo "dump-mics exited $DUMP_EC — Measure mic list empty or no selection" >&2
+    exit 1
+  fi
+  if ! grep -q '^mic_count=[1-9]' /tmp/speaker-master-dump-mics.out; then
+    echo "dump-mics reported empty mic_count" >&2
+    exit 1
+  fi
+  if grep -q 'Speaker Master Aggregate' /tmp/speaker-master-dump-mics.out; then
+    echo "dump-mics still lists process-tap aggregate as a Measure mic" >&2
+    exit 1
+  fi
+fi
+
+# Narrow / Custom / Bypass / audition without Microphone TCC
+if [[ "$MODE" == "full" || "$MODE" == "nonmic" ]]; then
+  echo "==> qa-nonmic gate"
+  set +e
+  "$BIN" --qa-nonmic >/tmp/speaker-master-qa-nonmic.out 2>&1
+  NONMIC_EC=$?
+  set -e
+  cat /tmp/speaker-master-qa-nonmic.out || true
+  if [[ "$NONMIC_EC" -ne 0 ]]; then
+    echo "qa-nonmic exited $NONMIC_EC" >&2
+    exit 1
+  fi
+  if grep -q '=fail' /tmp/speaker-master-qa-nonmic.out; then
+    echo "qa-nonmic reported failures" >&2
+    exit 1
+  fi
+fi
 
 echo "==> smoke mode=$MODE args=${ARGS[*]} (IPS before=$BEFORE_COUNT)"
 set +e
 "$BIN" "${ARGS[@]}" >/tmp/speaker-master-smoke.out 2>&1
 EC=$?
 set -e
+# Surface mic/measure lines for the QA report
+grep -E '^(smoke_|mic_)' /tmp/speaker-master-smoke.out || true
 
 # Allow IPS flush
 sleep "$HOLD_PAD_SEC"

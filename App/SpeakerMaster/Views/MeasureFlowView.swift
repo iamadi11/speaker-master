@@ -34,11 +34,18 @@ struct MeasureFlowView: View {
                         .font(SMTheme.captionFont.weight(.semibold))
                         .foregroundStyle(SMTheme.muted)
 
+                    if !model.mic.isAuthorizedForCapture {
+                        permissionBanner
+                    }
+
                     micPickerSection
 
                     HStack {
                         Button("Refresh list") {
-                            model.mic.refreshDevices()
+                            Task {
+                                _ = await model.mic.requestPermission()
+                                model.mic.refreshDevices()
+                            }
                         }
                         .buttonStyle(.bordered)
                         .accessibilityHint("Rescan available microphones")
@@ -97,7 +104,12 @@ struct MeasureFlowView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(SMTheme.accent)
-                    .disabled(running || model.mic.devices.isEmpty || model.mic.selectedDeviceID == nil)
+                    .disabled(
+                        running
+                            || model.mic.devices.isEmpty
+                            || model.mic.selectedDeviceID == nil
+                            || !model.mic.isAuthorizedForCapture
+                    )
                     .frame(minHeight: 44)
                     .accessibilityHint("Plays a short sweep, records the selected mic, then applies safe Auto EQ")
 
@@ -121,6 +133,35 @@ struct MeasureFlowView: View {
             _ = await model.mic.requestPermission()
             model.mic.refreshDevices()
         }
+    }
+
+    private var permissionBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Microphone access is off")
+                .font(SMTheme.captionFont.weight(.semibold))
+                .foregroundStyle(SMTheme.danger)
+            Text("HAL can list inputs, but Measure cannot record until Speaker Master is allowed under Privacy & Security → Microphone.")
+                .font(SMTheme.captionFont)
+                .foregroundStyle(SMTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Button("Open Microphone settings") {
+                    openMicrophoneSettings()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(SMTheme.accent)
+                Button("Ask again") {
+                    Task { _ = await model.mic.requestPermission() }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SMTheme.danger.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Microphone access is off. Open Microphone settings.")
     }
 
     @ViewBuilder

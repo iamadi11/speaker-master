@@ -89,7 +89,7 @@ final class MicRecorder: ObservableObject {
     private var tapInstalled = false
 
     init() {
-        permission = AVCaptureDevice.authorizationStatus(for: .audio)
+        permission = Self.currentPermission()
         refreshDevices()
     }
 
@@ -108,22 +108,51 @@ final class MicRecorder: ObservableObject {
         }
     }
 
+    /// Prefer `AVAudioApplication` (HAL / AVAudioEngine record path) and keep
+    /// `AVCaptureDevice` in sync — either denied blocks Measure capture.
     func requestPermission() async -> Bool {
-        let status = AVCaptureDevice.authorizationStatus(for: .audio)
-        if status == .authorized {
-            permission = status
+        permission = Self.currentPermission()
+        if permission == .authorized {
             refreshDevices()
             return true
         }
-        if status == .denied || status == .restricted {
-            permission = status
+        if permission == .denied || permission == .restricted {
             refreshDevices()
             return false
         }
-        let granted = await AVCaptureDevice.requestAccess(for: .audio)
-        permission = AVCaptureDevice.authorizationStatus(for: .audio)
+
+        let audioGranted = await Self.requestAudioApplicationPermission()
+        let captureGranted = await AVCaptureDevice.requestAccess(for: .audio)
+        permission = Self.currentPermission()
         refreshDevices()
-        return granted
+        return audioGranted && captureGranted && permission == .authorized
+    }
+
+    var isAuthorizedForCapture: Bool {
+        permission == .authorized
+    }
+
+    private static func currentPermission() -> AVAuthorizationStatus {
+        let capture = AVCaptureDevice.authorizationStatus(for: .audio)
+        let audio = AVAudioApplication.shared.recordPermission
+        switch audio {
+        case .granted:
+            return capture == .denied || capture == .restricted ? capture : .authorized
+        case .denied:
+            return .denied
+        case .undetermined:
+            return capture
+        @unknown default:
+            return capture
+        }
+    }
+
+    private static func requestAudioApplicationPermission() async -> Bool {
+        await withCheckedContinuation { continuation in
+            AVAudioApplication.requestRecordPermission { granted in
+                continuation.resume(returning: granted)
+            }
+        }
     }
 
     /// Play stimulus via `player` while capturing the **user-selected** mic for `duration`.
