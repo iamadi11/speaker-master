@@ -55,4 +55,18 @@ struct NarrowCatalogTests {
         #expect(!NarrowCatalog.looksLikeHeadphones(deviceName: "ULT Field 1"))
         #expect(NarrowCatalog.suggestedPresetID(deviceName: "AirPods Pro") == "generic-safe")
     }
+
+    @Test("suggests party-portable for JBL / UE Boom names")
+    func suggestsPartyPortable() {
+        #expect(NarrowCatalog.suggestedPresetID(deviceName: "JBL Flip 6") == "party-portable")
+        #expect(NarrowCatalog.suggestedPresetID(deviceName: "UE BOOM 3") == "party-portable")
+        #expect(NarrowCatalog.preset(id: "party-portable")?.category == .portable)
+    }
+
+    @Test("suggests homepod-class for HomePod / Nest")
+    func suggestsHomePodClass() {
+        #expect(NarrowCatalog.suggestedPresetID(deviceName: "HomePod mini") == "homepod-class")
+        #expect(NarrowCatalog.suggestedPresetID(deviceName: "Google Nest Audio") == "homepod-class")
+        #expect(NarrowCatalog.preset(id: "homepod-class")?.category == .smartSpeaker)
+    }
 }

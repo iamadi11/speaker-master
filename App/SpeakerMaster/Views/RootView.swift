@@ -47,6 +47,9 @@ struct RootView: View {
                     .font(SMTheme.captionFont)
                     .foregroundStyle(SMTheme.muted)
                     .lineLimit(2)
+                    .accessibilityAddTraits(.updatesFrequently)
+                    .accessibilityLabel("Status")
+                    .accessibilityValue(model.statusMessage)
             }
             Spacer()
             outputChip
@@ -63,6 +66,10 @@ struct RootView: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
         .background(SMTheme.surface.opacity(0.92))
+        .onChange(of: model.statusMessage) { _, newValue in
+            // Contextual live status (ui-ux-pro-max): announce meaningful phrases, not bare chips.
+            AccessibilityNotification.Announcement(newValue).post()
+        }
     }
 
     private var outputChip: some View {

@@ -153,13 +153,14 @@ final class AppModel: ObservableObject {
 
         // Bypass system EQ during capture so the room hears a flat stimulus,
         // not a previous Narrow/Measure/Custom curve (mic = room measure; tap = host).
-        // Pause the process-tap host entirely — two heavy Core Audio clients plus
+        // Suspend the process-tap host entirely — two heavy Core Audio clients plus
         // an input engine often starve Built-in mic buffers on personal Macs.
         let previousBypass = bypassed
         let hostWasActive = systemHost.status == .activeSystemWide || systemHost.status == .activeInAppOnly
+            || systemHost.status == .starting
         setBypass(true)
         if hostWasActive {
-            systemHost.deactivate()
+            systemHost.suspendForMeasure()
         }
         measurePhase = .recording
 
@@ -201,13 +202,13 @@ final class AppModel: ObservableObject {
                 autoScreen = .measure
                 setBypass(previousBypass)
                 if hostWasActive {
-                    systemHost.activate(curve: activeCurve)
+                    systemHost.resumeAfterMeasure(curve: activeCurve)
                 }
             }
         } catch {
             setBypass(previousBypass)
             if hostWasActive {
-                systemHost.activate(curve: activeCurve)
+                systemHost.resumeAfterMeasure(curve: activeCurve)
             }
             statusMessage = "Measure failed"
             measureNote = error.localizedDescription
@@ -303,7 +304,8 @@ final class AppModel: ObservableObject {
             profiles.save(safe)
         }
         pushCurveToHosts()
-        systemHost.activate(curve: safe.curve)
+        // Measure / Narrow apply always wants a clean host start (clears suspend).
+        systemHost.resumeAfterMeasure(curve: safe.curve)
     }
 
     private func commitCustom(_ curve: EQCurve, status: String) {
