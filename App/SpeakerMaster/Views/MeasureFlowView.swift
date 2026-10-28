@@ -32,11 +32,11 @@ struct MeasureFlowView: View {
                         .font(SMTheme.captionFont.weight(.semibold))
                         .foregroundStyle(SMTheme.muted)
                     if model.mic.devices.isEmpty {
-                        Text("No mics found. Grant Microphone access or use Narrow.")
+                        Text("No mics found. Grant Microphone access in System Settings, then Refresh — or use Narrow.")
                             .foregroundStyle(SMTheme.danger)
                             .accessibilityLabel("No microphones found")
                     } else {
-                        Picker("Microphone", selection: Binding(
+                        Picker("Input", selection: Binding(
                             get: { model.mic.selectedDeviceID ?? "" },
                             set: { model.mic.selectedDeviceID = $0 }
                         )) {
@@ -44,7 +44,7 @@ struct MeasureFlowView: View {
                                 Text(device.name).tag(device.id)
                             }
                         }
-                        .labelsHidden()
+                        .pickerStyle(.menu)
                         .accessibilityLabel("Microphone input")
                     }
                     HStack {
