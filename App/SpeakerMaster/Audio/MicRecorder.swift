@@ -51,6 +51,7 @@ enum MicRecorderError: LocalizedError {
     case deviceNotInput(String)
     case cannotBindInput(String)
     case engineStartFailed(String)
+    case emptyCapture(String)
 
     var errorDescription: String? {
         switch self {
@@ -62,6 +63,8 @@ enum MicRecorderError: LocalizedError {
             return "Could not use that mic (\(detail))"
         case .engineStartFailed(let detail):
             return "Mic engine failed to start (\(detail))"
+        case .emptyCapture(let name):
+            return "“\(name)” returned no audio — try Built-in Microphone, or refresh and re-select"
         }
     }
 }
@@ -104,7 +107,38 @@ final class MicRecorder: ObservableObject {
         } else if let current = selectedDeviceID, list.contains(where: { $0.id == current }) {
             // keep current selection
         } else {
-            selectedDeviceID = list.first?.id
+            selectedDeviceID = Self.preferredInputID(from: list)
+        }
+    }
+
+    /// Prefer a local Mac mic over Continuity/iPhone for first-run Measure reliability.
+    static func preferredInputID(from list: [MicDevice]) -> String? {
+        if let builtIn = list.first(where: { $0.id == "BuiltInMicrophoneDevice" }) {
+            return builtIn.id
+        }
+        if let macBook = list.first(where: {
+            let name = $0.name.lowercased()
+            return name.contains("macbook") && name.contains("microphone")
+        }) {
+            return macBook.id
+        }
+        if let local = list.first(where: { !looksLikeContinuityMic($0) }) {
+            return local.id
+        }
+        return list.first?.id
+    }
+
+    static func looksLikeContinuityMic(_ device: MicDevice) -> Bool {
+        let name = device.name.lowercased()
+        return name.contains("iphone") || name.contains("ipad") || name.contains("continuity")
+    }
+
+    /// Smoke / recovery helper — select Built-in when present without wiping user memory forever.
+    func preferBuiltInMicrophoneIfAvailable() {
+        if let builtIn = devices.first(where: { $0.id == "BuiltInMicrophoneDevice" }) {
+            selectedDeviceID = builtIn.id
+        } else if let preferred = Self.preferredInputID(from: devices) {
+            selectedDeviceID = preferred
         }
     }
 
@@ -205,6 +239,8 @@ final class MicRecorder: ObservableObject {
             throw MicRecorderError.engineStartFailed(error.localizedDescription)
         }
         isRecording = true
+        // Brief settle so the input tap is delivering buffers before the sweep.
+        try await Task.sleep(nanoseconds: 180_000_000)
 
         do {
             try player.start(mode: .sweep, curve: stimulusCurve)
@@ -221,6 +257,10 @@ final class MicRecorder: ObservableObject {
         let captured = buffer.snapshot()
         samples = []
         lastPeakLinear = captured.map { abs($0) }.max() ?? 0
+        // Empty buffer after a "successful" start is an infrastructure failure, not a room take.
+        if captured.isEmpty {
+            throw MicRecorderError.emptyCapture(displayName)
+        }
         return (captured, sampleRate)
     }
 
