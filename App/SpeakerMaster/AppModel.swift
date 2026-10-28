@@ -118,7 +118,8 @@ final class AppModel: ObservableObject {
         {
             apply(profile: profile, persist: false)
             autoScreen = .home
-            statusMessage = "On for this speaker · Stays until Retry or a different speaker"
+            // Persist honesty lives on Auto home body — keep strip short (no duplicate).
+            statusMessage = "On for this speaker · Hold Bypass to A/B"
         } else {
             autoScreen = .pathPicker
             activeCurve = .flat
@@ -293,23 +294,21 @@ final class AppModel: ObservableObject {
         statusMessage = "Ready to measure — place mic, then Play"
     }
 
-    /// Elevate status strip when System EQ needs attention (journey honesty).
+    /// Elevate status strip only for blocking System EQ failures — never clobber
+    /// Measure/Narrow success or Auto-home trust copy (panel already shows in-app-only).
     private func syncSystemEQStatusHonesty() {
         let phase = systemHost.phase
         guard phase != lastAnnouncedHostPhase else { return }
         lastAnnouncedHostPhase = phase
+        guard !isMeasureRunning else { return }
         switch phase {
         case .needsPermission:
-            if !statusMessage.contains("Privacy") && !isMeasureRunning {
+            if !statusMessage.contains("Privacy") && !statusMessage.contains("Screen & System Audio") {
                 statusMessage = "System EQ needs Screen & System Audio permission"
             }
         case .failed:
-            if !isMeasureRunning {
+            if !statusMessage.hasPrefix("System EQ failed") {
                 statusMessage = "System EQ failed — Retry or open Privacy settings"
-            }
-        case .activeInAppOnly:
-            if !isMeasureRunning, lastSource != nil {
-                statusMessage = "In-app audition only — system-wide not active yet"
             }
         default:
             break
@@ -359,7 +358,32 @@ final class AppModel: ObservableObject {
         customStack = CustomEditStack(base: target)
         activeCurve = target
         customCanUndo = false
-        persistCustomCurve(target)
+        // Restore Auto path identity — Custom must not leave sacred Auto looking like “Custom edits”.
+        if let narrowID = lastNarrowPresetID, NarrowCatalog.preset(id: narrowID) != nil {
+            lastSource = .narrow
+            profiles.save(
+                SpeakerProfile(
+                    identity: output.identity,
+                    source: .narrow,
+                    narrowPresetID: narrowID,
+                    curve: target
+                )
+            )
+        } else if target != EQCurve.flat.sanitized() {
+            lastSource = .measure
+            lastNarrowPresetID = nil
+            profiles.save(
+                SpeakerProfile(
+                    identity: output.identity,
+                    source: .measure,
+                    curve: target
+                )
+            )
+        } else {
+            lastSource = nil
+            lastNarrowPresetID = nil
+            profiles.remove(outputUID: output.identity.outputUID)
+        }
         pushCurveToHosts()
         statusMessage = "Custom · Reset to Auto"
     }

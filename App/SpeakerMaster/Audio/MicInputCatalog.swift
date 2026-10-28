@@ -4,7 +4,7 @@ import Foundation
 /// HAL input enumeration for Measure. Prefer this over AVCaptureDevice.DiscoverySession:
 /// same UIDs as `MicRecorder` binding, and lists inputs even when AVCapture returns [].
 enum MicInputCatalog {
-    /// Devices with at least one input stream (built-in, USB, Continuity, etc.).
+    /// Devices with at least one input stream that can act as a **room mic** for Measure.
     static func listInputs() -> [MicDevice] {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
@@ -38,6 +38,19 @@ enum MicInputCatalog {
         var result: [MicDevice] = []
         result.reserveCapacity(count)
         var seen = Set<String>()
+        var outputTwinBases = Set<String>()
+
+        // First pass: remember Bluetooth/USB output twin bases so speaker `:input`
+        // endpoints (e.g. ULT FIELD 1) can be excluded from Measure.
+        for deviceID in deviceIDs {
+            guard let uid = CoreAudioDeviceLookup.stringProperty(
+                deviceID,
+                kAudioDevicePropertyDeviceUID
+            ), !uid.isEmpty else { continue }
+            if uid.hasSuffix(":output") {
+                outputTwinBases.insert(String(uid.dropLast(":output".count)))
+            }
+        }
 
         for deviceID in deviceIDs {
             guard CoreAudioDeviceLookup.inputStreamCount(for: deviceID) > 0 else { continue }
@@ -54,9 +67,56 @@ enum MicInputCatalog {
                 deviceID,
                 kAudioObjectPropertyName
             ) ?? uid
-            result.append(MicDevice(id: uid, name: name))
+            let transport = CoreAudioDeviceLookup.transportType(for: deviceID)
+            let device = MicDevice(id: uid, name: name)
+            guard isMeasureMicCandidate(
+                device,
+                transport: transport,
+                outputTwinBases: outputTwinBases
+            ) else { continue }
+
+            result.append(device)
         }
 
         return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Keep Built-in / Continuity / headset mics; drop Bluetooth speaker playback twins.
+    static func isMeasureMicCandidate(
+        _ device: MicDevice,
+        transport: UInt32,
+        outputTwinBases: Set<String>
+    ) -> Bool {
+        let name = device.name.lowercased()
+        let uid = device.id
+
+        if uid == "BuiltInMicrophoneDevice" { return true }
+        if name.contains("microphone") || name.contains("mic ") || name.hasSuffix(" mic") {
+            return true
+        }
+        if name.contains("airpods")
+            || name.contains("headset")
+            || name.contains("earbuds")
+            || name.contains("buds")
+        {
+            return true
+        }
+        if name.contains("iphone") || name.contains("ipad") || name.contains("continuity") {
+            return true
+        }
+
+        // Bluetooth (or similar) speaker I/O pair: `MAC:input` beside `MAC:output`.
+        // These are not room mics — Measure on them yields empty/weak takes.
+        if uid.hasSuffix(":input") {
+            let base = String(uid.dropLast(":input".count))
+            if outputTwinBases.contains(base) {
+                let isBluetooth = transport == kAudioDeviceTransportTypeBluetooth
+                    || transport == kAudioDeviceTransportTypeBluetoothLE
+                    || transport == 0 // unknown — still exclude twin inputs without mic tokens
+                if isBluetooth { return false }
+            }
+        }
+
+        return true
     }
 }

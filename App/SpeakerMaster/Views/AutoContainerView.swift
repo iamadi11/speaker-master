@@ -190,9 +190,10 @@ struct AutoHomeView: View {
                 model.toggleAudition()
             }
             .buttonStyle(.borderless)
-            .font(SMTheme.captionFont)
-            .foregroundStyle(SMTheme.tertiary)
+            .font(SMTheme.captionFont.weight(.medium))
+            .foregroundStyle(SMTheme.muted)
             .help("Optional in-app proof (⇧⌘A)")
+            .accessibilityLabel(model.player.isPlaying ? "Stop audition" : "Play audition, optional")
             .accessibilityHint("Optional — Bypass in the toolbar is the primary A/B")
 
             SystemHostStatusView(compactWhenHealthy: true)

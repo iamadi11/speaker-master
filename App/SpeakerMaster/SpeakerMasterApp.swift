@@ -175,6 +175,11 @@ struct SpeakerMasterApp: App {
                 "custom_reset_auto",
                 model.activeCurve == preset.curve.sanitized() && !model.customCanUndo
             )
+            check(
+                "custom_reset_auto_source",
+                model.lastSource == .narrow && model.lastNarrowPresetID == preset.id,
+                "source=\(String(describing: model.lastSource))"
+            )
 
             // Bypass A/B + audition noise
             model.setBypass(true)

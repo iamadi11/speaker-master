@@ -73,6 +73,19 @@ enum CoreAudioDeviceLookup {
         return status == noErr ? rate : 0
     }
 
+    /// Core Audio transport (Bluetooth, built-in, USB, …). `0` if unavailable.
+    static func transportType(for deviceID: AudioObjectID) -> UInt32 {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var transport: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &transport)
+        return status == noErr ? transport : 0
+    }
+
     static func inputStreamCount(for deviceID: AudioObjectID) -> Int {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyStreams,

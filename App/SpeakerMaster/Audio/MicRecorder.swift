@@ -82,6 +82,7 @@ final class MicRecorder: ObservableObject {
         }) {
             return macBook.id
         }
+        // Continuity last — often empty buffers in automated / first-pass Measure.
         if let local = list.first(where: { !looksLikeContinuityMic($0) }) {
             return local.id
         }
