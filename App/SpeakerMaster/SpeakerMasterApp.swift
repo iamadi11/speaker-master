@@ -15,6 +15,10 @@ struct SpeakerMasterApp: App {
                     if CommandLine.arguments.contains("--open-measure") {
                         model.autoScreen = .measure
                     }
+                    if CommandLine.arguments.contains("--dump-mics") {
+                        dumpMicsAndExit()
+                        return
+                    }
                     runSmokeIfRequested()
                 }
         }
@@ -26,6 +30,29 @@ struct SpeakerMasterApp: App {
         MenuBarExtra("Speaker Master", systemImage: "slider.horizontal.3") {
             MenuBarView()
                 .environmentObject(model)
+        }
+    }
+
+    /// Print HAL input catalog + selection, then quit (QA / empty-picker regression).
+    @MainActor
+    private func dumpMicsAndExit() {
+        Task { @MainActor in
+            _ = await model.mic.requestPermission()
+            model.mic.refreshDevices()
+            let status = model.mic.permission.rawValue
+            print("mic_permission_raw=\(status)")
+            print("mic_count=\(model.mic.devices.count)")
+            for device in model.mic.devices {
+                let mark = device.id == model.mic.selectedDeviceID ? "*" : " "
+                print("mic\(mark) \(device.name) uid=\(device.id)")
+            }
+            if let selected = model.mic.selectedDeviceID {
+                print("mic_selected=\(selected)")
+            } else {
+                print("mic_selected=")
+            }
+            let ok = !model.mic.devices.isEmpty && model.mic.selectedDeviceID != nil
+            exit(ok ? 0 : 1)
         }
     }
 

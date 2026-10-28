@@ -18,6 +18,7 @@
 		4F688A8C9CED3D11D5B8746B /* BypassButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB6ACD7D98C3039A0E38E4B8 /* BypassButton.swift */; };
 		551492696DC6B4AF2467FB21 /* CustomEQView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4CB2008E8F3963A503F864 /* CustomEQView.swift */; };
 		6251FD92F3032F4CE49DCC36 /* InAppEQPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A42FE6BB41D870B89110E2A /* InAppEQPlayer.swift */; };
+		6AD0D437FFC002B2568DB392 /* MicInputCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5677A4D4294CBECC301031 /* MicInputCatalog.swift */; };
 		742DACB279368ED6E8ABF329 /* SpeakerMasterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09F2BC87B2968B95F0981A3 /* SpeakerMasterApp.swift */; };
 		76FBE9A3F3DC57E56AA20F07 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FB0DF60B384D7EC51F6734 /* AppModel.swift */; };
 		9F103DB418E8A748F252C3BE /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B8281FBBBABD2C4FBD9B016 /* MenuBarView.swift */; };
@@ -42,6 +43,7 @@
 		5D24C3EF74B45537FBFDA579 /* NarrowFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NarrowFlowView.swift; sourceTree = "<group>"; };
 		66124633D6A54BF0494ADD15 /* SystemHostStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHostStatusView.swift; sourceTree = "<group>"; };
 		6C4CB2008E8F3963A503F864 /* CustomEQView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEQView.swift; sourceTree = "<group>"; };
+		8E5677A4D4294CBECC301031 /* MicInputCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicInputCatalog.swift; sourceTree = "<group>"; };
 		92AB0654ABA3B94AC638A741 /* ProcessTapCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapCapture.swift; sourceTree = "<group>"; };
 		A09F2BC87B2968B95F0981A3 /* SpeakerMasterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerMasterApp.swift; sourceTree = "<group>"; };
 		A0E13129AE89EF6292171193 /* ProcessTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessTapEngine.swift; sourceTree = "<group>"; };
@@ -82,6 +84,7 @@
 			children = (
 				2FE8777F8D6BE51341B233E0 /* ProcessTap */,
 				3A42FE6BB41D870B89110E2A /* InAppEQPlayer.swift */,
+				8E5677A4D4294CBECC301031 /* MicInputCatalog.swift */,
 				4CC6D9EC5512CEFD23DA5813 /* MicRecorder.swift */,
 				A8D492432719856DCE48D66F /* OutputDeviceMonitor.swift */,
 				C00932D1FE6AC62771A20323 /* SystemAudioHost.swift */,
@@ -215,6 +218,7 @@
 				6251FD92F3032F4CE49DCC36 /* InAppEQPlayer.swift in Sources */,
 				AB0ACCCE4193B6DE4EFFFB01 /* MeasureFlowView.swift in Sources */,
 				9F103DB418E8A748F252C3BE /* MenuBarView.swift in Sources */,
+				6AD0D437FFC002B2568DB392 /* MicInputCatalog.swift in Sources */,
 				F195028A5DBA76356ED9661D /* MicRecorder.swift in Sources */,
 				4DF42787D272D449EE9716FA /* NarrowFlowView.swift in Sources */,
 				E8E66716023B6E4D11DA611D /* OutputDeviceMonitor.swift in Sources */,
