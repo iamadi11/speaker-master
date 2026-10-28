@@ -82,7 +82,34 @@ struct SpeakerMasterApp: App {
             } else {
                 print("mic_selected=")
             }
-            let ok = !model.mic.devices.isEmpty && model.mic.selectedDeviceID != nil
+
+            // Continuity stickiness probe: plant a Continuity UID as lastMic, refresh —
+            // selection must snap to Built-in / local when both exist.
+            var continuityStickyFail = false
+            if let continuity = model.mic.devices.first(where: { MicRecorder.looksLikeContinuityMic($0) }),
+               model.mic.devices.contains(where: { $0.id == "BuiltInMicrophoneDevice" })
+            {
+                UserDefaults.standard.set(continuity.id, forKey: "speaker-master.lastMicUID")
+                // Clear in-session selection so resolve path uses remembered only.
+                model.mic.selectedDeviceID = nil
+                model.mic.refreshDevices()
+                let after = model.mic.selectedDeviceID ?? ""
+                print("mic_continuity_probe_after=\(after)")
+                if after == continuity.id {
+                    print("mic_fail=continuity_sticky")
+                    continuityStickyFail = true
+                } else {
+                    print("mic_continuity_probe=pass")
+                }
+                // Restore Built-in sticky for the owner's next interactive launch.
+                model.mic.preferBuiltInMicrophoneIfAvailable()
+            } else {
+                print("mic_continuity_probe=skip")
+            }
+
+            let ok = !model.mic.devices.isEmpty
+                && model.mic.selectedDeviceID != nil
+                && !continuityStickyFail
             exit(ok ? 0 : 1)
         }
     }

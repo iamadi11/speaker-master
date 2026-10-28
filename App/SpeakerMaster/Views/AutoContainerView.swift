@@ -216,6 +216,7 @@ struct AutoHomeView: View {
     }
 
     private var bypassHint: String {
-        "Next: hold Bypass in the toolbar to hear before (A/B). Release to hear the fix again."
+        // Single body Next line — status strip + System EQ no longer repeat Bypass.
+        "Next: Bypass in the toolbar (⌘B) to hear before. Release to hear the fix again."
     }
 }

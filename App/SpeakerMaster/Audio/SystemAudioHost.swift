@@ -93,7 +93,7 @@ final class SystemAudioHost: ObservableObject, AudioTapHosting {
                     self.status = .activeSystemWide
                     self.phase = .activeSystemWide
                     self.detail =
-                        "System-wide EQ on — Spotify, YouTube, and other apps use this curve. Hold Bypass to A/B."
+                        "System-wide EQ on — Spotify, YouTube, and other apps use this curve."
                 }
             } catch let error as ProcessTapCapture.CaptureError {
                 await MainActor.run {

@@ -36,7 +36,7 @@ final class AppModel: ObservableObject {
     @Published var autoScreen: AutoScreen = .pathPicker
     @Published var activeCurve: EQCurve = .flat
     @Published var bypassed = false
-    @Published var statusMessage = "Safety limits on · Hold Bypass to A/B"
+    @Published var statusMessage = "Safety limits on · Bypass in toolbar to A/B"
     @Published var lastSource: SpeakerProfile.Source?
     @Published var lastNarrowPresetID: String?
     @Published var measureNote: String?
@@ -119,7 +119,8 @@ final class AppModel: ObservableObject {
             apply(profile: profile, persist: false)
             autoScreen = .home
             // Persist honesty lives on Auto home body — keep strip short (no duplicate).
-            statusMessage = "On for this speaker · Hold Bypass to A/B"
+            // Bypass trust CTA lives in the toolbar + one Next line on Auto home — avoid strip echo.
+            statusMessage = "On for this speaker · Safety limits on"
         } else {
             autoScreen = .pathPicker
             activeCurve = .flat
@@ -260,6 +261,26 @@ final class AppModel: ObservableObject {
             handleMeasureCancelled(hostWasActive: hostWasActive, previousBypass: previousBypass)
         } catch is CancellationError {
             handleMeasureCancelled(hostWasActive: hostWasActive, previousBypass: previousBypass)
+        } catch MicRecorderError.emptyCapture(let name) {
+            setBypass(previousBypass)
+            if hostWasActive {
+                systemHost.resumeAfterMeasure(curve: activeCurve)
+            }
+            let wasContinuity = MicSelectionPolicy.looksLikeContinuityMic(name: name)
+                || mic.selectedDeviceLooksLikeContinuity
+            if wasContinuity {
+                mic.recoverFromContinuityEmptyCapture()
+                statusMessage = "Continuity mic empty — switched to Built-in"
+                measureNote =
+                    "“\(name)” returned no audio. Continuity often fails Measure — selected Built-in instead. Place the Mac toward the speaker and try again, or use Narrow."
+            } else {
+                statusMessage = "Measure failed"
+                measureNote = MicRecorderError.emptyCapture(name).errorDescription
+                    ?? "Mic returned no audio — try Built-in, or use Narrow."
+            }
+            measurePhase = .refused
+            lastMeasureQuality = .badTake
+            autoScreen = .measure
         } catch {
             setBypass(previousBypass)
             if hostWasActive {
