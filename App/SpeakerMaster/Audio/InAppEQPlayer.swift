@@ -2,23 +2,35 @@ import AVFoundation
 import Foundation
 import SpeakerMaster
 
-/// In-app audition path: pinkish noise / sweep through `EQEngine`.
-/// Proves Narrow / Measure / Custom change audible output before/alongside system-wide host.
-@MainActor
-final class InAppEQPlayer: ObservableObject {
-    @Published private(set) var isPlaying = false
+enum InAppEQPlayMode: Sendable {
+    case noise
+    case sweep
+}
 
-    private let engine = AVAudioEngine()
-    private var sourceNode: AVAudioSourceNode?
+/// Realtime-safe state for `AVAudioSourceNode`. Touched under `lock` from the
+/// audio IO thread and from MainActor apply/start/stop — never hops actors.
+private final class InAppEQRenderState: @unchecked Sendable {
+    private let lock = NSLock()
     private var eqEngine = EQEngine(sampleRate: 48_000, curve: .flat)
     private var phase: Double = 0
     private var sampleRate: Double = 48_000
-    private var mode: Mode = .noise
-    private let lock = NSLock()
+    private var mode: InAppEQPlayMode = .noise
+    /// Tiny LCG — avoid `Float.random` / system RNG on the render thread.
+    private var noiseState: UInt64 = 0xC0FFEE_DEAD_BEEF
 
-    enum Mode {
-        case noise
-        case sweep
+    func resetPhase() {
+        lock.lock()
+        phase = 0
+        lock.unlock()
+    }
+
+    func configure(mode: InAppEQPlayMode, sampleRate: Double, curve: EQCurve) {
+        lock.lock()
+        self.mode = mode
+        self.sampleRate = sampleRate > 0 ? sampleRate : 48_000
+        self.phase = 0
+        eqEngine.apply(curve: curve, sampleRate: self.sampleRate)
+        lock.unlock()
     }
 
     func apply(curve: EQCurve) {
@@ -27,49 +39,78 @@ final class InAppEQPlayer: ObservableObject {
         lock.unlock()
     }
 
+    func render(
+        frameCount: AVAudioFrameCount,
+        into audioBufferList: UnsafeMutablePointer<AudioBufferList>
+    ) {
+        let abl = UnsafeMutableAudioBufferListPointer(audioBufferList)
+        lock.lock()
+        let mode = self.mode
+        let sr = self.sampleRate
+        for buffer in abl {
+            guard let data = buffer.mData?.assumingMemoryBound(to: Float.self) else { continue }
+            let n = Int(frameCount)
+            for i in 0..<n {
+                let raw: Float
+                switch mode {
+                case .noise:
+                    noiseState = noiseState &* 636_413_622_384_679_3005 &+ 1
+                    let unit = Float(noiseState >> 40) / Float(1 << 24)
+                    raw = (unit * 2 - 1) * 0.18
+                case .sweep:
+                    phase += 1
+                    let t = phase / sr
+                    let f = 60.0 * pow(200.0, (t.truncatingRemainder(dividingBy: 2.0)) / 2.0)
+                    let ang = 2 * Double.pi * f * t
+                    raw = Float(0.15 * sin(ang))
+                }
+                data[i] = eqEngine.process(raw)
+            }
+        }
+        lock.unlock()
+    }
+}
+
+/// Builds the source node off the MainActor so the render closure is not
+/// actor-isolated (Swift 6 would otherwise trap on the audio IO thread).
+private enum InAppEQSourceNodeFactory {
+    nonisolated static func make(state: InAppEQRenderState) -> AVAudioSourceNode {
+        AVAudioSourceNode { _, _, frameCount, audioBufferList -> OSStatus in
+            state.render(frameCount: frameCount, into: audioBufferList)
+            return noErr
+        }
+    }
+}
+
+/// In-app audition path: pinkish noise / sweep through `EQEngine`.
+/// Proves Narrow / Measure / Custom change audible output before/alongside system-wide host.
+@MainActor
+final class InAppEQPlayer: ObservableObject {
+    @Published private(set) var isPlaying = false
+
+    private let engine = AVAudioEngine()
+    private var sourceNode: AVAudioSourceNode?
+    private let renderState = InAppEQRenderState()
+
+    func apply(curve: EQCurve) {
+        renderState.apply(curve: curve)
+    }
+
     func setBypassed(_ bypassed: Bool, baseCurve: EQCurve) {
         var curve = baseCurve
         curve.bypassed = bypassed
         apply(curve: curve)
     }
 
-    func start(mode: Mode = .noise, curve: EQCurve) throws {
+    func start(mode: InAppEQPlayMode = .noise, curve: EQCurve) throws {
         stop()
-        self.mode = mode
-        apply(curve: curve)
 
         let output = engine.outputNode
         let format = output.outputFormat(forBus: 0)
-        sampleRate = format.sampleRate > 0 ? format.sampleRate : 48_000
-        apply(curve: curve)
+        let sr = format.sampleRate > 0 ? format.sampleRate : 48_000
+        renderState.configure(mode: mode, sampleRate: sr, curve: curve)
 
-        let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
-            guard let self else { return noErr }
-            let abl = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            for buffer in abl {
-                guard let data = buffer.mData?.assumingMemoryBound(to: Float.self) else { continue }
-                let n = Int(frameCount)
-                self.lock.lock()
-                for i in 0..<n {
-                    let raw: Float
-                    switch self.mode {
-                    case .noise:
-                        raw = Float.random(in: -0.18...0.18)
-                    case .sweep:
-                        // Log sweep 60 Hz → 12 kHz over ~2 s
-                        self.phase += 1
-                        let t = self.phase / self.sampleRate
-                        let f = 60.0 * pow(200.0, (t.truncatingRemainder(dividingBy: 2.0)) / 2.0)
-                        let ang = 2 * Double.pi * f * t
-                        raw = Float(0.15 * sin(ang))
-                    }
-                    data[i] = self.eqEngine.process(raw)
-                }
-                self.lock.unlock()
-            }
-            return noErr
-        }
-
+        let node = InAppEQSourceNodeFactory.make(state: renderState)
         sourceNode = node
         engine.attach(node)
         engine.connect(node, to: engine.mainMixerNode, format: format)
@@ -86,6 +127,6 @@ final class InAppEQPlayer: ObservableObject {
         }
         sourceNode = nil
         isPlaying = false
-        phase = 0
+        renderState.resetPhase()
     }
 }

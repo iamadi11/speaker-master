@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @main
@@ -13,6 +14,19 @@ struct SpeakerMasterApp: App {
                     // Demo / screenshot helper — not a product preference.
                     if CommandLine.arguments.contains("--open-measure") {
                         model.autoScreen = .measure
+                    }
+                    // Crash-regression smoke: start in-app audition on the realtime
+                    // audio thread, hold briefly, stop. Exit 0 if still alive.
+                    if CommandLine.arguments.contains("--smoke-audition") {
+                        Task { @MainActor in
+                            model.toggleAudition()
+                            try? await Task.sleep(nanoseconds: 2_500_000_000)
+                            if model.player.isPlaying {
+                                model.toggleAudition()
+                            }
+                            try? await Task.sleep(nanoseconds: 300_000_000)
+                            NSApplication.shared.terminate(nil)
+                        }
                     }
                 }
         }

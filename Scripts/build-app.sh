@@ -16,6 +16,17 @@ restore_plist() {
   cp "$src" "$dest"
 }
 
+# CI / unsigned hosts stay ad-hoc. Local personal installs prefer Apple Development.
+# Force ad-hoc: SPEAKER_MASTER_FORCE_ADHOC=1
+eval "$("$ROOT/Scripts/resolve-signing.sh")"
+if [[ "${SPEAKER_MASTER_FORCE_ADHOC:-}" == "1" ]]; then
+  SIGN_IDENTITY="-"
+  DEVELOPMENT_TEAM=""
+  SIGN_MODE="adhoc"
+fi
+
+echo "==> Signing: mode=$SIGN_MODE identity=$SIGN_IDENTITY team=${DEVELOPMENT_TEAM:-none}"
+
 echo "==> xcodegen"
 xcodegen generate
 
@@ -81,6 +92,22 @@ cat > "$ROOT/App/SpeakerMaster/SpeakerMaster.entitlements" <<'ENT'
 </plist>
 ENT
 
+SIGN_ARGS=(
+  CODE_SIGNING_ALLOWED=YES
+  CODE_SIGN_IDENTITY="$SIGN_IDENTITY"
+)
+if [[ -n "$DEVELOPMENT_TEAM" ]]; then
+  SIGN_ARGS+=(
+    DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
+    CODE_SIGN_STYLE=Manual
+  )
+else
+  SIGN_ARGS+=(
+    DEVELOPMENT_TEAM=
+    CODE_SIGN_STYLE=Manual
+  )
+fi
+
 echo "==> xcodebuild"
 xcodebuild \
   -project SpeakerMaster.xcodeproj \
@@ -88,8 +115,7 @@ xcodebuild \
   -configuration Debug \
   -derivedDataPath "$ROOT/build" \
   -destination 'platform=macOS' \
-  CODE_SIGN_IDENTITY="-" \
-  CODE_SIGNING_ALLOWED=YES \
+  "${SIGN_ARGS[@]}" \
   build
 
 APP="$ROOT/build/Build/Products/Debug/SpeakerMaster.app"
@@ -98,7 +124,12 @@ if [[ -d "$APP" ]]; then
     echo "NSAudioCaptureUsageDescription missing from built Info.plist" >&2
     exit 1
   fi
+  # Ensure final signature matches resolved identity (Xcode sometimes leaves mixed state).
+  codesign --force --deep --sign "$SIGN_IDENTITY" \
+    --entitlements "$ROOT/App/SpeakerMaster/SpeakerMaster.entitlements" \
+    "$APP"
   echo "Built: $APP"
+  codesign -dv --verbose=2 "$APP" 2>&1 | grep -E 'Identifier=|Authority=|TeamIdentifier=|Signature=' || true
 else
   echo "Build finished but .app not found at expected path" >&2
   exit 1
