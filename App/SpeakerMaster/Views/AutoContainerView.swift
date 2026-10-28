@@ -66,6 +66,7 @@ struct AutoPathPickerView: View {
                     }
                 }
 
+                SystemHostStatusView()
                 auditionRow
             }
             .padding(28)
@@ -119,7 +120,7 @@ struct AutoPathPickerView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(SMTheme.accent)
-            Text("Hear EQ changes in-app while system-wide tap is staged.")
+            Text("In-app noise proves the curve; system-wide EQ covers Spotify/YouTube once the tap is active.")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.muted)
             Spacer()
@@ -160,10 +161,7 @@ struct AutoHomeView: View {
                     .tint(SMTheme.accent)
             }
 
-            Text(model.systemHost.detail)
-                .font(SMTheme.captionFont)
-                .foregroundStyle(SMTheme.muted)
-                .padding(.top, 8)
+            SystemHostStatusView()
 
             Spacer()
         }

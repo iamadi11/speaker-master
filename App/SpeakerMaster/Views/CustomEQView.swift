@@ -66,6 +66,8 @@ struct CustomEQView: View {
                 }
             }
 
+            SystemHostStatusView()
+
             Text("Limiter stays on. Expert overrides above Auto caps are not enabled in v1.")
                 .font(SMTheme.captionFont)
                 .foregroundStyle(SMTheme.muted)

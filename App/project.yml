@@ -19,6 +19,11 @@ targets:
       - path: SpeakerMaster
         excludes:
           - README.md
+          - Info.plist
+    # Info.plist + entitlements are restored after `xcodegen` by Scripts/build-app.sh
+    # (xcodegen templates wipe privacy usage strings). Path must still be wired here.
+    info:
+      path: SpeakerMaster/Info.plist
     settings:
       base:
         PRODUCT_NAME: SpeakerMaster
@@ -27,15 +32,13 @@ targets:
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Speaker Master
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
-        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: Speaker Master briefly records through the mic you select so Measure can improve this speaker. Captures stay on this Mac and are deleted after analysis.
-        INFOPLIST_KEY_NSAudioCaptureUsageDescription: Speaker Master processes system audio so Auto and Custom EQ can apply to what this Mac is playing.
+        GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: SpeakerMaster/SpeakerMaster.entitlements
         ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_APP_SANDBOX: NO
         CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
     entitlements:
       path: SpeakerMaster/SpeakerMaster.entitlements
     dependencies:
@@ -43,4 +46,3 @@ targets:
         product: SpeakerMaster
     scheme:
       testTargets: []
-

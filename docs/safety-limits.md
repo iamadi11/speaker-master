@@ -129,7 +129,7 @@ Stored profiles (Measure or Narrow) always re-apply **through** current safety e
 | This document | **Frozen** for phase-1 gate “written safety limits sheet” |
 | Numeric changes | Require ADR under `docs/adr/` + listening note |
 | DSP PR gate | Reject PRs that introduce Auto boost above §2 or Auto without limiter |
-| Install claim | No `.app` yet — this sheet does **not** imply shipped DSP |
+| Install claim | DSP + system-wide host ship in the Mac app; this sheet remains the gain ceiling |
 
 ---
 

@@ -19,14 +19,4 @@ jobs:
       - name: Install xcodegen
         run: brew install xcodegen
       - name: Build macOS app
-        run: |
-          cd App
-          xcodegen generate
-          xcodebuild \
-            -project SpeakerMaster.xcodeproj \
-            -scheme SpeakerMasterApp \
-            -configuration Debug \
-            -destination 'platform=macOS' \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_ALLOWED=YES \
-            build
+        run: ./Scripts/build-app.sh
